@@ -20,6 +20,7 @@ import { TeleportOptions } from '../../types/teleport';
 import { DEFAULT_COORDINATES } from '../../config';
 import { BearingController } from '../BearingController';
 import { ModelConfig, CarModelConfig, PlayerModelConfig, ModelResponse, CarPhysics, CarDrivingAnimation } from '../api/types/ModelTypes';
+import { DeviceDetection } from '../utils/DeviceDetection';
 
 // Add type definition for Threebox model config
 export interface ThreeboxModelConfig {
@@ -502,6 +503,25 @@ export class PlayerController implements IFollowable {
 
         const key = e.key.toLowerCase();
 
+        // Handle cruise control toggle (C key) - desktop only
+        if (key === 'c' && DeviceDetection.isDesktop()) {
+            // Only allow cruise control in car mode
+            if (this.currentState instanceof CarState) {
+                this.currentState.toggleCruiseControl();
+                const isActive = this.currentState.isCruiseControlActive();
+                const targetSpeed = this.currentState.getCruiseControlTargetSpeed();
+                
+                if (isActive) {
+                    this.showMessage(`Cruise Control ON (${Math.round(targetSpeed)} km/h)`, 2000);
+                } else {
+                    this.showMessage("Cruise Control OFF", 2000);
+                }
+            } else {
+                this.showMessage("Cruise control only available in car mode", 2000);
+            }
+            return;
+        }
+
         // Check if this is a key we're tracking
         if (key in this.keyStates) {
             this.setKeyState(key, true);
@@ -547,6 +567,30 @@ export class PlayerController implements IFollowable {
     public setKeyState(key: string, isPressed: boolean): void {
         if (key in this.keyStates) {
             this.keyStates[key] = isPressed;
+        }
+    }
+
+    // Cruise Control convenience methods
+    public isCruiseControlAvailable(): boolean {
+        return DeviceDetection.isDesktop() && this.currentState instanceof CarState;
+    }
+
+    public getCruiseControlState(): { active: boolean; targetSpeed: number } | null {
+        if (!(this.currentState instanceof CarState)) {
+            return null;
+        }
+        
+        return {
+            active: this.currentState.isCruiseControlActive(),
+            targetSpeed: this.currentState.getCruiseControlTargetSpeed()
+        };
+    }
+
+    public adjustCruiseControlSpeed(deltaKmh: number): void {
+        if (this.currentState instanceof CarState) {
+            this.currentState.adjustCruiseSpeed(deltaKmh);
+            const targetSpeed = this.currentState.getCruiseControlTargetSpeed();
+            this.showMessage(`Cruise Speed: ${Math.round(targetSpeed)} km/h`, 1500);
         }
     }
 } 

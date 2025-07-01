@@ -1,0 +1,62 @@
+/* Hide scrollbar but keep functionality */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Smooth image transitions */
+img {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  -moz-backface-visibility: hidden;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  -moz-transform: translateZ(0);
+}
+
+/* Smooth backdrop blur transitions */
+.backdrop-blur-sm {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Add smooth shadow transitions */
+.shadow-lg, .shadow-xl {
+  transition: box-shadow 0.3s ease;
+}
+
+/* Smooth scale transitions */
+.transform {
+  transition-property: transform, opacity;
+  will-change: transform, opacity;
+}
+
+/* Add subtle hover effect to thumbnails */
+.thumbnail-hover {
+  transition: all 0.3s ease;
+}
+
+.thumbnail-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Add smooth gradient transitions */
+.bg-gradient-to-b, .bg-gradient-to-t {
+  transition: opacity 0.3s ease;
+}
+
+/* Add smooth rotation transitions */
+.rotate-90 {
+  transition: transform 0.3s ease;
+}
+
+/* Add smooth blur transitions */
+.blur, .blur-sm {
+  transition: filter 0.3s ease;
+} 

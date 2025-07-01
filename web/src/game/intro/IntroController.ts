@@ -1,6 +1,6 @@
 import { PlayerStore } from '../stores/PlayerStore';
 import { AuthClient } from '../realtime/AuthClient';
-import { IntroOptions} from './IntroTypes';
+import { IntroOptions } from './IntroTypes';
 import { IntroUI } from './IntroUI';
 import { LoginResponse } from '../realtime/types/Auth';
 
@@ -19,11 +19,11 @@ export class IntroController {
   /**
    * Show the intro UI with authentication requirements
    */
-  public async showIntro(loginResponse: LoginResponse | null, onComplete: (coords: [number, number]) => void): Promise<void> {
+  public async showIntro(loginResponse: LoginResponse | null, onComplete: (coords: [number, number]) => void): Promise<void> {
     const options: IntroOptions = {
       isAuthenticated: !!loginResponse,
-      //hasPaid: loginResponse?.hasPaid ?? false,
-      hasPaid: true,
+      hasPaid: loginResponse?.hasPaid ?? false,
+      //hasPaid: true,
       email: loginResponse?.email,
       onStartGame: onComplete,
       onVehicleSelect: (vehicleType) => {
@@ -55,19 +55,19 @@ export class IntroController {
             window.alert('Something went wrong. Please try again.');
             return null;
           }
-          
+
           // Update player store with data from login response
           PlayerStore.setPlayerName(response.username);
           PlayerStore.setIsGuest(response.isGuest);
-          
+
           // Store player ID for future sessions
           localStorage.setItem(this.playerIdKey, response.username);
-          
+
           // If user hasn't paid, show payment UI
-          // if (!response.hasPaid) {
-          //   return response;
-          // }
-          
+          if (!response.hasPaid) {
+            return response;
+          }
+
           // If user has paid, mark intro as viewed and proceed
           this.markIntroAsViewed();
           return response;
@@ -97,7 +97,7 @@ export class IntroController {
 
           const { url } = await response.json();
           window.location.href = url;
-          
+
           return { success: true };
         } catch (error) {
           console.error('Payment failed:', error);

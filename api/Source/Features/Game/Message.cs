@@ -25,6 +25,13 @@ public class Message
     
     public DateTime SentAt { get; set; }
     
+    // New moderation properties
+    public bool IsFiltered { get; set; } = false;
+    
+    public int? AISeverityScore { get; set; } // 1-10 scale
+    
+    public DateTime? ModeratedAt { get; set; }
+    
     public static Message FromGameHub(string playerId, string playerName, string content, PlayerState? playerState)
     {
         return new Message

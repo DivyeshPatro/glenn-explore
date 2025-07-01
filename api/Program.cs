@@ -146,6 +146,17 @@ public partial class Program
         builder.Services.AddSingleton<LLMMessagePersistenceService>();
         builder.Services.AddHostedService(sp => sp.GetRequiredService<LLMMessagePersistenceService>());
 
+        // Register OpenRouter client and moderation service
+        builder.Services.AddScoped<Api.Features.OpenRouter.OpenRouterClient>(provider =>
+        {
+            var configuration = provider.GetRequiredService<IConfiguration>();
+            var apiKey = configuration["OpenRouter:ApiKey"];
+            var siteUrl = configuration["OpenRouter:SiteUrl"];
+            var siteName = configuration["OpenRouter:SiteName"];
+            return new Api.Features.OpenRouter.OpenRouterClient(apiKey, siteUrl, siteName);
+        });
+        builder.Services.AddScoped<Api.Source.Features.Game.Services.ChatModerationService>();
+
         // Register application services
         builder.Services.AddScoped<UserManagementService>();
         builder.Services.AddScoped<ToplistService>();

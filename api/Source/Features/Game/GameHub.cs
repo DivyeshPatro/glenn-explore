@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Api.Features.Auth.Models;
 using Api.Core.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
+using Api.Source.Features.Game.Services;
 
 namespace Api.Source.Features.Game;
 
@@ -16,6 +17,7 @@ public class GameHub : Hub
     private readonly MessagePersistenceService _messagePersistence;
     private readonly IServiceProvider _serviceProvider;
     private readonly NameValidationService _nameValidation;
+    private readonly ChatModerationService _chatModeration;
 
     public GameHub(
         ILogger<GameHub> logger,
@@ -23,7 +25,8 @@ public class GameHub : Hub
         UserManager<User> userManager,
         MessagePersistenceService messagePersistence,
         IServiceProvider serviceProvider,
-        NameValidationService nameValidation)
+        NameValidationService nameValidation,
+        ChatModerationService chatModeration)
     {
         _logger = logger;
         _gameState = gameState;
@@ -31,6 +34,7 @@ public class GameHub : Hub
         _messagePersistence = messagePersistence;
         _serviceProvider = serviceProvider;
         _nameValidation = nameValidation;
+        _chatModeration = chatModeration;
     }
 
     public override async Task OnConnectedAsync()
@@ -170,12 +174,30 @@ public class GameHub : Hub
         // Get player state for additional context
         var player = _gameState.GetPlayer(user.Id);
 
-        // Queue chat message for persistence
+        // Create chat message
         var chatMessage = Message.FromGameHub(user.Id, player?.Name ?? "Unknown", message, player);
+
+        // Moderate the message
+        var moderationResult = await _chatModeration.ModerateMessageAsync(message);
+        Console.WriteLine("Moderation result: " + moderationResult.IsAbusive);
+        // Update message with moderation data
+        chatMessage.IsFiltered = moderationResult.IsAbusive;
+        chatMessage.AISeverityScore = moderationResult.SeverityScore;
+        chatMessage.ModeratedAt = DateTime.UtcNow;
+
+        // Always save message to database (for tracking)
         _messagePersistence.QueueMessage(chatMessage);
 
-        // Broadcast chat message
-        await BroadcastMessage(ToUserMessage(chatMessage));
+        // Only broadcast if not abusive
+        if (!moderationResult.IsAbusive)
+        {
+            await BroadcastMessage(ToUserMessage(chatMessage));
+        }
+        else
+        {
+            _logger.LogWarning("Filtered abusive message from {PlayerId} ({PlayerName}): {Message} - Severity: {Severity}, Reason: {Reason}", 
+                user.Id, player?.Name ?? "Unknown", message, moderationResult.SeverityScore, moderationResult.Reason);
+        }
     }
 
     public async Task BroadcastMessage(ChatMessageEvent message)

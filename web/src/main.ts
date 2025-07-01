@@ -16,6 +16,7 @@ import { AuthClient } from './game/realtime/AuthClient'
 import { TeleportOptions } from './types/teleport'
 import { ModelClient } from './game/api/ModelClient'
 import { initializeQuests } from './game/quests/engine/initializeQuests'
+import { DonationPopover } from './game/UI/DonationPopover'
 
 // Initialize input focus tracking
 InputUtils.initialize();
@@ -83,14 +84,14 @@ async function setupScene() {
     PlayerStore.setPlayerName(authResult.username);
     PlayerStore.setIsGuest(authResult.isGuest);
     PlayerStore.setPlayerId(authResult.playerId);
-    // If user hasn't paid, show intro with payment step
-    // if (!authResult.hasPaid) {
-    //   const introController = new IntroController(authClient);
-    //   await introController.showIntro(authResult, (initialPosition: [number, number]) => {
-    //     initializeGame(player, initialPosition, realtimeController, teleportWrapper);
-    //   });
-    //   return;
-    // }
+    //If user hasn't paid, show intro with payment step
+    if (!authResult.hasPaid) {
+      const introController = new IntroController(authClient);
+      await introController.showIntro(authResult, (initialPosition: [number, number]) => {
+        initializeGame(player, initialPosition, realtimeController, teleportWrapper);
+      });
+      return;
+    }
 
     // If user has paid, proceed with the game
     let hasPosition = false;
@@ -249,7 +250,9 @@ function initializeGame(
           }
           
           setTimeout(() => {
-            window.showModelSelector();
+            DonationPopover.showFirst(() => {
+              window.showModelSelector();
+            });
           }, 1000);
           
           Toast.show({
@@ -286,5 +289,7 @@ window.isSmallScreen = isSmallScreen;
 window.addEventListener('beforeunload', () => {
   // Clean up radio
   RadioService.getInstance().destroy();
+  // Clean up donation popover
+  DonationPopover.destroy();
 });
 

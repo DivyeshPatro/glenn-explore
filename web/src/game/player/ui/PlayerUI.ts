@@ -1,5 +1,7 @@
 import { IFollowable } from '../../types/IFollowable';
 import { PlayerStore } from '../../stores/PlayerStore';
+import { DeviceDetection } from '../../utils/DeviceDetection';
+import { PlayerController } from '../PlayerController';
 
 export class PlayerUI {
     private messageElement: HTMLDivElement | null = null;
@@ -7,13 +9,16 @@ export class PlayerUI {
     private animationFrameId: number | null = null;
     private floatingNameElement: HTMLDivElement | null = null;
     private floatingNameUpdateInterval: number | null = null;
+    private cruiseControlElement: HTMLDivElement | null = null;
+    private cruiseControlUpdateInterval: number | null = null;
 
     constructor(
         private map: mapboxgl.Map,
-        private player: IFollowable
+        private player: IFollowable & PlayerController
     ) {
         this.createMessageElement();
         this.createFloatingNameElement();
+        this.createCruiseControlUI();
     }
 
     private createMessageElement(): void {
@@ -182,6 +187,222 @@ export class PlayerUI {
         this.floatingNameElement.style.left = `${screenCoords.x}px`;
     }
 
+    private createCruiseControlUI(): void {
+        // Only create cruise control UI on desktop
+        if (!DeviceDetection.isDesktop()) {
+            return;
+        }
+
+        this.cruiseControlElement = document.createElement('div');
+        this.cruiseControlElement.className = 'cruise-control-panel';
+        document.body.appendChild(this.cruiseControlElement);
+
+        // Add styles if they don't exist yet
+        if (!document.querySelector('#cruise-control-style')) {
+            const style = document.createElement('style');
+            style.id = 'cruise-control-style';
+            style.textContent = `
+                .cruise-control-panel {
+                    position: fixed;
+                    bottom: 120px;
+                    right: 20px;
+                    background: rgba(31, 41, 55, 0.85);
+                    backdrop-filter: blur(10px);
+                    color: white;
+                    border-radius: 12px;
+                    padding: 12px 16px;
+                    font-size: 13px;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+                    min-width: 140px;
+                    text-align: center;
+                    transition: all 0.3s ease;
+                    z-index: 1000;
+                    cursor: pointer;
+                    pointer-events: auto;
+                    font-family: 'Inter', sans-serif;
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+                }
+                
+                .cruise-control-panel:hover {
+                    background: rgba(31, 41, 55, 0.95);
+                    border-color: rgba(255, 255, 255, 0.2);
+                }
+                
+                .cruise-control-panel.hidden {
+                    opacity: 0.4;
+                }
+                
+                .cruise-control-status {
+                    margin-bottom: 10px;
+                    font-weight: 600;
+                    font-size: 14px;
+                    color: #fff;
+                    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+                }
+                
+                .cruise-control-buttons {
+                    display: flex;
+                    gap: 8px;
+                    justify-content: center;
+                    align-items: center;
+                    margin-bottom: 8px;
+                }
+                
+                .cruise-control-btn {
+                    background: rgba(59, 130, 246, 0.8);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    color: white;
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    font-weight: bold;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.2s ease;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+                    line-height: 1;
+                }
+                
+                .cruise-control-btn:hover {
+                    background: rgba(59, 130, 246, 1);
+                    border-color: rgba(255, 255, 255, 0.3);
+                    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+                    transform: translateY(-1px);
+                }
+                
+                .cruise-control-btn:active {
+                    transform: translateY(0);
+                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+                }
+                
+                .cruise-control-btn:disabled {
+                    background: rgba(107, 114, 128, 0.5);
+                    border-color: rgba(255, 255, 255, 0.1);
+                    cursor: not-allowed;
+                    transform: none;
+                }
+                
+                .cruise-keybind {
+                    font-size: 11px;
+                    color: rgba(255, 255, 255, 0.6);
+                    margin-top: 4px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        this.startCruiseControlUpdateLoop();
+    }
+
+    private startCruiseControlUpdateLoop(): void {
+        if (!this.cruiseControlElement) return;
+
+        const updateLoop = () => {
+            if (this.cruiseControlElement) {
+                this.updateCruiseControlDisplay();
+                this.cruiseControlUpdateInterval = window.requestAnimationFrame(updateLoop);
+            } else {
+                this.cruiseControlUpdateInterval = null;
+            }
+        };
+        
+        this.cruiseControlUpdateInterval = window.requestAnimationFrame(updateLoop);
+    }
+
+    private updateCruiseControlDisplay(): void {
+        if (!this.cruiseControlElement || !DeviceDetection.isDesktop()) return;
+
+        const isAvailable = this.player.isCruiseControlAvailable();
+        const cruiseState = this.player.getCruiseControlState();
+
+        if (!isAvailable || !cruiseState) {
+            this.cruiseControlElement.style.display = 'none';
+            return;
+        }
+
+        this.cruiseControlElement.style.display = 'block';
+
+        const { active, targetSpeed } = cruiseState;
+        // Use the same speed source as VehicleStatsUI - PlayerStore.getCurrentSpeed()
+        const currentDisplaySpeed = PlayerStore.getCurrentSpeed();
+        const targetDisplaySpeed = Math.round(targetSpeed);
+        
+        const statusText = active ? `ON (${targetDisplaySpeed} km/h)` : 'OFF';
+        const statusClass = active ? '' : 'hidden';
+
+        this.cruiseControlElement.className = `cruise-control-panel ${statusClass}`;
+        
+        // Check if we need to rebuild the UI (when active state changes)
+        const needsRebuild = !this.cruiseControlElement.dataset.lastActiveState || 
+                           this.cruiseControlElement.dataset.lastActiveState !== active.toString();
+        
+        if (needsRebuild) {
+            this.cruiseControlElement.innerHTML = `
+                <div class="cruise-control-status">Cruise Control: ${statusText}</div>
+                ${active ? `
+                    <div class="cruise-control-buttons">
+                        <button class="cruise-control-btn" id="cruise-decrease">-</button>
+                        <button class="cruise-control-btn" id="cruise-increase">+</button>
+                    </div>
+                ` : ''}
+                <div class="cruise-keybind">Press C or click to toggle</div>
+            `;
+
+            // Store the current active state to avoid unnecessary rebuilds
+            this.cruiseControlElement.dataset.lastActiveState = active.toString();
+
+            // Add click event listener to the panel itself to toggle cruise control
+            this.cruiseControlElement.onclick = (e) => {
+                // Don't trigger if clicking on the speed adjustment buttons
+                if ((e.target as HTMLElement).classList.contains('cruise-control-btn')) {
+                    return;
+                }
+                
+                // Toggle cruise control using the public method
+                if (this.player.isCruiseControlAvailable()) {
+                    // Simulate the C key press logic by getting current state and toggling
+                    const cruiseState = this.player.getCruiseControlState();
+                    if (cruiseState) {
+                        // Use a keydown event to trigger the existing cruise control toggle logic
+                        const event = new KeyboardEvent('keydown', { key: 'c' });
+                        document.dispatchEvent(event);
+                    }
+                }
+            };
+
+            // Add event listeners for speed adjustment buttons (only when active)
+            if (active) {
+                const decreaseBtn = document.getElementById('cruise-decrease');
+                const increaseBtn = document.getElementById('cruise-increase');
+
+                if (decreaseBtn) {
+                    decreaseBtn.onclick = (e) => {
+                        e.stopPropagation(); // Prevent triggering the panel click
+                        this.player.adjustCruiseControlSpeed(-5);
+                    };
+                }
+                if (increaseBtn) {
+                    increaseBtn.onclick = (e) => {
+                        e.stopPropagation(); // Prevent triggering the panel click
+                        this.player.adjustCruiseControlSpeed(5);
+                    };
+                }
+            }
+        } else if (active) {
+            // Just update the status text without rebuilding
+            const statusElement = this.cruiseControlElement.querySelector('.cruise-control-status');
+            if (statusElement) {
+                statusElement.textContent = `Cruise Control: ON (${targetDisplaySpeed} km/h)`;
+            }
+        }
+    }
+
     public destroy(): void {
         if (this.messageTimeout !== null) {
             clearTimeout(this.messageTimeout);
@@ -200,10 +421,18 @@ export class PlayerUI {
             cancelAnimationFrame(this.floatingNameUpdateInterval);
             this.floatingNameUpdateInterval = null;
         }
-
         if (this.floatingNameElement) {
             document.body.removeChild(this.floatingNameElement);
             this.floatingNameElement = null;
+        }
+
+        if (this.cruiseControlUpdateInterval) {
+            cancelAnimationFrame(this.cruiseControlUpdateInterval);
+            this.cruiseControlUpdateInterval = null;
+        }
+        if (this.cruiseControlElement) {
+            document.body.removeChild(this.cruiseControlElement);
+            this.cruiseControlElement = null;
         }
     }
 } 

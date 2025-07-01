@@ -23,6 +23,12 @@ export class CarState implements PlayerState<CarModelConfig> {
     private lastSpaceMessageTime: number = 0;
     private readonly SPACE_MESSAGE_COOLDOWN = 10000; // 10 seconds in milliseconds
 
+    // Cruise Control Properties
+    private cruiseControlActive: boolean = false;
+    private cruiseControlTargetSpeed: number = 0; // In km/h
+    private readonly MIN_CRUISE_SPEED_KMH = 20; // Minimum cruise control speed in km/h
+    private readonly CRUISE_CONTROL_SMOOTHING = 0.8; // How aggressively to maintain speed
+
     // Get config from PlayerController
     modelConfig: CarModelConfig;
 
@@ -171,36 +177,62 @@ export class CarState implements PlayerState<CarModelConfig> {
         const isBoost = this.controller?.getKeyState('shift');
         const boostMultiplier = isBoost ? 4 : 1;
         
-        // Use controller's key states
-        if (this.controller?.getKeyState('w')) {
-            // Accelerate forward with boost
-            this.velocity = Math.min(
-                this.velocity + physics.acceleration * boostMultiplier,
-                physics.maxSpeed * boostMultiplier
-            );
-            this.animationState = 'driving';
-        } else if (this.controller?.getKeyState('s')) {
-            if (this.velocity > 0) {
-                // Braking
-                this.velocity = Math.max(
-                    this.velocity - physics.brakeForce,
-                    0
+        // Check for braking - disable cruise control if braking
+        const isBraking = this.controller?.getKeyState('s');
+        if (isBraking && this.cruiseControlActive) {
+            this.disableCruiseControl();
+        }
+        
+        // Check for acceleration input during cruise control
+        const isAccelerating = this.controller?.getKeyState('w');
+        
+        // Handle cruise control logic
+        if (this.cruiseControlActive && !isBraking) {
+            // If W is pressed during cruise control, incrementally increase target speed
+            if (isAccelerating) {
+                // Increase cruise control target speed by 2 km/h per second (smooth increment)
+                const increaseRate = 30; // km/h per second (will be scaled by physics timestep)
+                const increment = increaseRate * this.TIME_STEP;
+                this.cruiseControlTargetSpeed = Math.min(
+                    this.cruiseControlTargetSpeed + increment,
+                    physics.maxSpeed * boostMultiplier * 1000 // Convert max speed to km/h and apply boost
                 );
-                this.animationState = 'braking';
-            } else {
-                // Reverse
-                this.velocity = Math.max(
-                    this.velocity - physics.acceleration,
-                    -physics.reverseSpeed
-                );
-                this.animationState = 'reversing';
             }
+            
+            this.maintainCruiseSpeed(physics, boostMultiplier);
+            this.animationState = 'driving';
         } else {
-            animationName = this.modelConfig.drivingAnimation?.drivingAnimation;
-            this.animationState = 'idle';
-            // Natural slowdown with fixed timestep
-            this.velocity *= physics.friction;
-            if (Math.abs(this.velocity) < 0.01) this.velocity = 0;
+            // Normal driving logic
+            if (isAccelerating) {
+                // Accelerate forward with boost
+                this.velocity = Math.min(
+                    this.velocity + physics.acceleration * boostMultiplier,
+                    physics.maxSpeed * boostMultiplier
+                );
+                this.animationState = 'driving';
+            } else if (isBraking) {
+                if (this.velocity > 0) {
+                    // Braking
+                    this.velocity = Math.max(
+                        this.velocity - physics.brakeForce,
+                        0
+                    );
+                    this.animationState = 'braking';
+                } else {
+                    // Reverse
+                    this.velocity = Math.max(
+                        this.velocity - physics.acceleration,
+                        -physics.reverseSpeed
+                    );
+                    this.animationState = 'reversing';
+                }
+            } else {
+                animationName = this.modelConfig.drivingAnimation?.drivingAnimation;
+                this.animationState = 'idle';
+                // Natural slowdown with fixed timestep
+                this.velocity *= physics.friction;
+                if (Math.abs(this.velocity) < 0.01) this.velocity = 0;
+            }
         }
 
         if (animationName) {
@@ -295,5 +327,67 @@ export class CarState implements PlayerState<CarModelConfig> {
     public follow(): void {
         if (!this.controller) return;
         //CameraController.follow(this.controller, 'car');
+    }
+
+    // Cruise Control Methods
+    public toggleCruiseControl(): void {
+        if (this.cruiseControlActive) {
+            this.disableCruiseControl();
+        } else {
+            this.enableCruiseControl();
+        }
+    }
+
+    public enableCruiseControl(): void {
+        // Use PlayerStore.getCurrentSpeed() to match the displayed speed values
+        const currentDisplaySpeed = PlayerStore.getCurrentSpeed();
+        const targetSpeed = Math.max(currentDisplaySpeed, this.MIN_CRUISE_SPEED_KMH);
+        this.cruiseControlTargetSpeed = targetSpeed;
+        this.cruiseControlActive = true;
+        
+        // If current speed is too low, accelerate to minimum speed
+        if (currentDisplaySpeed < this.MIN_CRUISE_SPEED_KMH) {
+            // Convert km/h back to velocity units for the physics
+            this.velocity = this.MIN_CRUISE_SPEED_KMH / 1000;
+        }
+    }
+
+    public disableCruiseControl(): void {
+        this.cruiseControlActive = false;
+        this.cruiseControlTargetSpeed = 0;
+    }
+
+    public adjustCruiseSpeed(deltaKmh: number): void {
+        if (!this.cruiseControlActive) return;
+        
+        this.cruiseControlTargetSpeed = Math.max(
+            this.MIN_CRUISE_SPEED_KMH,
+            this.cruiseControlTargetSpeed + deltaKmh
+        );
+    }
+
+    public isCruiseControlActive(): boolean {
+        return this.cruiseControlActive;
+    }
+
+    public getCruiseControlTargetSpeed(): number {
+        return this.cruiseControlTargetSpeed;
+    }
+
+    private maintainCruiseSpeed(physics: CarPhysics, boostMultiplier: number): void {
+        const targetVelocity = this.cruiseControlTargetSpeed / 1000; // Convert km/h to velocity units
+        const currentVelocity = this.velocity;
+        const velocityDifference = targetVelocity - currentVelocity;
+        
+        // Apply smooth adjustment to reach target speed
+        if (Math.abs(velocityDifference) > 0.001) {
+            const adjustment = velocityDifference * this.CRUISE_CONTROL_SMOOTHING * physics.acceleration;
+            this.velocity += adjustment;
+            
+            // Apply boost multiplier if shift is held during cruise control
+            if (boostMultiplier > 1) {
+                this.velocity = Math.min(this.velocity, physics.maxSpeed * boostMultiplier);
+            }
+        }
     }
 } 

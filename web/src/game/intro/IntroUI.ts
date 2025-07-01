@@ -60,27 +60,30 @@ export class IntroUI {
     return `
       <div class="payment-section">
         <div class="payment-message">
-          You're about to unlock an incredible driving adventure! 🌎
-          Join our thriving community exploring the world together.
+          🚀 <strong>Glenn is exploding with players!</strong>
+          <br><br>
+          We're honestly overwhelmed by how many people want to play - the servers are getting hammered! 
+          Until we find a better solution for server costs, we need to charge $1 to keep the lights on.
         </div>
         <div class="payment-features">
-          <div class="feature-item">✨ LIFETIME access - no subscriptions ever!</div>
-          <div class="feature-item">🌟 All current vehicles and characters</div>
-          <div class="feature-item">🎮 Cross-country road trips with friends</div>
-          <div class="feature-item">🎵 In-game radio & music</div>
-          <div class="feature-item">🏆 Personal stats & achievements</div>
+          <div class="feature-item">💡 This is temporary - it won't be paid forever!</div>
+          <div class="feature-item">🌟 Early supporters get special perks & donator status</div>
+          <div class="feature-item">🏆 Your progress saved across sessions</div>
         </div>
         <div class="payment-cost">
-          One-time payment of $0.99
+          Temporary server fee: $1.00
         </div>
         <div class="payment-alternative">
-          Want to try before buying? The project is open source! 
-          <a href="https://github.com/WilliamAvHolmberg/glenn-explore" target="_blank" class="github-link">Run it locally, check the code on GitHub</a>
+          <strong>💭 Try later!</strong> We're working on making it free again.
           <br/>
           <br/>
-          Already a member? Try reloading the page. 
+          Want to run it yourself? The project is open source! 
+          <a href="https://github.com/WilliamAvHolmberg/glenn-explore" target="_blank" class="github-link">Check the code on GitHub</a>
           <br/>
-          Need help? Reach out on Discord or email mail@playglenn.com - we're here for you! 
+          <br/>
+          Already paid? Try reloading the page. 
+          <br/>
+          Need help? Reach out on Discord or email mail@playglenn.com
         </div>
         ${this.state?.paymentState.error ? `
           <p class="error-message">${this.state.paymentState.error}</p>
@@ -331,11 +334,11 @@ export class IntroUI {
       if (response) {
         this.state.loginState.isVerified = true;
 
-        // if (!response.hasPaid) {
-        //   this.state.currentStep = 'payment';
-        // } else {
-        this.state.currentStep = 'instructions';
-        //}
+        if (!response.hasPaid) {
+          this.state.currentStep = 'payment';
+        } else {
+          this.state.currentStep = 'instructions';
+        }
       }
     } catch (error) {
       console.error('Failed to verify OTP:', error);
