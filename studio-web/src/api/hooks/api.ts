@@ -2670,6 +2670,151 @@ export function useGetApiMarketingUnsubscribeEncodedUserId<TData = Awaited<Retur
 
 
 
+export const getApiMarketingPixelEncodedRecipientId = (
+    encodedRecipientId: string,
+ signal?: AbortSignal
+) => {
+      
+      
+      return customClient<void>(
+      {url: `/api/marketing/pixel/${encodedRecipientId}`, method: 'GET', signal
+    },
+      );
+    }
+  
+
+export const getGetApiMarketingPixelEncodedRecipientIdQueryKey = (encodedRecipientId: string,) => {
+    return [`/api/marketing/pixel/${encodedRecipientId}`] as const;
+    }
+
+    
+export const getGetApiMarketingPixelEncodedRecipientIdInfiniteQueryOptions = <TData = InfiniteData<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>>, TError = ErrorType<unknown>>(encodedRecipientId: string, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>, TError, TData>>, }
+) => {
+
+const {query: queryOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetApiMarketingPixelEncodedRecipientIdQueryKey(encodedRecipientId);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>> = ({ signal }) => getApiMarketingPixelEncodedRecipientId(encodedRecipientId, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(encodedRecipientId),  staleTime: 10000,  ...queryOptions} as UseInfiniteQueryOptions<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetApiMarketingPixelEncodedRecipientIdInfiniteQueryResult = NonNullable<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>>
+export type GetApiMarketingPixelEncodedRecipientIdInfiniteQueryError = ErrorType<unknown>
+
+
+export function useGetApiMarketingPixelEncodedRecipientIdInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>>, TError = ErrorType<unknown>>(
+ encodedRecipientId: string, options: { query:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>,
+          TError,
+          Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>
+        > , 'initialData'
+      >, }
+ , queryClient?: QueryClient
+  ):  DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiMarketingPixelEncodedRecipientIdInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>>, TError = ErrorType<unknown>>(
+ encodedRecipientId: string, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>,
+          TError,
+          Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>
+        > , 'initialData'
+      >, }
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiMarketingPixelEncodedRecipientIdInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>>, TError = ErrorType<unknown>>(
+ encodedRecipientId: string, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>, TError, TData>>, }
+ , queryClient?: QueryClient
+  ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetApiMarketingPixelEncodedRecipientIdInfinite<TData = InfiniteData<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>>, TError = ErrorType<unknown>>(
+ encodedRecipientId: string, options?: { query?:Partial<UseInfiniteQueryOptions<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>, TError, TData>>, }
+ , queryClient?: QueryClient 
+ ):  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetApiMarketingPixelEncodedRecipientIdInfiniteQueryOptions(encodedRecipientId,options)
+
+  const query = useInfiniteQuery(queryOptions , queryClient) as  UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+export const getGetApiMarketingPixelEncodedRecipientIdQueryOptions = <TData = Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>, TError = ErrorType<unknown>>(encodedRecipientId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>, TError, TData>>, }
+) => {
+
+const {query: queryOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetApiMarketingPixelEncodedRecipientIdQueryKey(encodedRecipientId);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>> = ({ signal }) => getApiMarketingPixelEncodedRecipientId(encodedRecipientId, signal);
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(encodedRecipientId),  staleTime: 10000,  ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetApiMarketingPixelEncodedRecipientIdQueryResult = NonNullable<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>>
+export type GetApiMarketingPixelEncodedRecipientIdQueryError = ErrorType<unknown>
+
+
+export function useGetApiMarketingPixelEncodedRecipientId<TData = Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>, TError = ErrorType<unknown>>(
+ encodedRecipientId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>,
+          TError,
+          Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>
+        > , 'initialData'
+      >, }
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiMarketingPixelEncodedRecipientId<TData = Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>, TError = ErrorType<unknown>>(
+ encodedRecipientId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>,
+          TError,
+          Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>
+        > , 'initialData'
+      >, }
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetApiMarketingPixelEncodedRecipientId<TData = Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>, TError = ErrorType<unknown>>(
+ encodedRecipientId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>, TError, TData>>, }
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetApiMarketingPixelEncodedRecipientId<TData = Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>, TError = ErrorType<unknown>>(
+ encodedRecipientId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getApiMarketingPixelEncodedRecipientId>>, TError, TData>>, }
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetApiMarketingPixelEncodedRecipientIdQueryOptions(encodedRecipientId,options)
+
+  const query = useQuery(queryOptions , queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
 export const getApiModelsUnlocked = (
     
  signal?: AbortSignal

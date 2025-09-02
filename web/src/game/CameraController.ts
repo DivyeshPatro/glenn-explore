@@ -28,8 +28,8 @@ export class CameraController {
       CameraController.map = map;
       CameraController.tb = tb;
       
-      PitchController.initialize(60);
-      ZoomController.initialize(20);
+      PitchController.initialize(75);
+      ZoomController.initialize(18);
       BearingController.initialize(0);
     }
   }

@@ -5,15 +5,15 @@ namespace Api.Features.Auth.Services;
 public static class UsernameGenerator
 {
     private static readonly string[] FirstParts = {
-        "Swift", "Quick", "Dark", "Light", "Storm", "Fire", "Ice", "Wind",
-        "Shadow", "Bright", "Wild", "Brave", "Iron", "Steel", "Silver", "Golden",
-        "Mighty", "Royal", "Frost", "Flame"
+        "Cosmic", "Mystic", "Astral", "Lunar", "Solar", "Thunder", "Crystal", "Ocean", 
+        "Forest", "Mountain", "Desert", "River", "Cloud", "Star", "Moon", "Sky",
+        "Ancient", "Eternal", "Sacred", "Divine"
     };
 
     private static readonly string[] SecondParts = {
-        "Blade", "Wolf", "Hawk", "Rune", "Knight", "Guard", "Slayer", "Hunter",
-        "Rider", "Walker", "Master", "Smith", "Mage", "Ranger", "Warrior", "King",
-        "Queen", "Lord", "Sage", "Dragon"
+        "Phoenix", "Griffin", "Serpent", "Tiger", "Eagle", "Bear", "Lion", "Falcon",
+        "Warden", "Guardian", "Sentinel", "Keeper", "Scout", "Guide", "Wanderer", "Seeker",
+        "Champion", "Hero", "Legend", "Mystic"
     };
 
     // RuneScape-like username validation

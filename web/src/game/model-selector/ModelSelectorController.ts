@@ -183,15 +183,15 @@ export class ModelSelectorController {
                                         ? `<img src="${model.thumbnailUrl}" alt="${model.name}">`
                                         : model.name
                                     }
-                                    ${!model.isUnlocked ? `<div class="model-lock-overlay">🔒</div>` : ''}
+                                    ${!model.isUnlocked ? `
+                                        <div class="model-lock-overlay">🔒</div>
+                                        <button class="preview-purchase-button" data-model-id="${model.modelId}">Purchase $${model.price.toFixed(2)}</button>
+                                    ` : ''}
                                 </div>
                                 <p class="model-name">${model.name}</p>
+                                ${this.createPerformanceStatsHTML(model)}
                                 <div class="model-price">
-                                    ${model.isUnlocked
-                                        ? `<span class="model-owned">Owned</span>`
-                                        : `<span class="price-tag">$${model.price.toFixed(2)}</span>
-                                           <button class="purchase-button" data-model-id="${model.modelId}">Purchase</button>`
-                                    }
+                                    ${model.isUnlocked ? `<span class="model-owned">Owned</span>` : ''}
                                 </div>
                             </div>
                         `;
@@ -237,7 +237,7 @@ export class ModelSelectorController {
         const target = event.target as HTMLElement;
 
         // Check if it's a purchase button
-        if (target.classList.contains('purchase-button')) {
+        if (target.classList.contains('purchase-button') || target.classList.contains('preview-purchase-button')) {
             event.stopPropagation(); // Prevent the model selection
             await this.handlePurchaseClick(target);
             return;
@@ -285,6 +285,7 @@ export class ModelSelectorController {
         if (!modelId) return;
 
         try {
+            const originalText = button.textContent;
             button.textContent = 'Processing...';
             (button as HTMLButtonElement).disabled = true;
 
@@ -301,8 +302,13 @@ export class ModelSelectorController {
                 duration: 3000
             });
 
-            // Reset button
-            button.textContent = 'Purchase';
+            // Reset button - check if it's the new preview button or old style
+            if (button.classList.contains('preview-purchase-button')) {
+                const model = this.availableModels.find(m => m.modelId === modelId);
+                button.textContent = model ? `Purchase $${model.price.toFixed(2)}` : 'Purchase';
+            } else {
+                button.textContent = 'Purchase';
+            }
             (button as HTMLButtonElement).disabled = false;
         }
     }
@@ -319,5 +325,91 @@ export class ModelSelectorController {
 
     public destroy(): void {
         this.close();
+    }
+
+    private getPerformanceStats(model: ModelResponse): { maxSpeed: number, acceleration: number, brakeForce: number } {
+        try {
+            const config = model.config;
+            
+            // Check if this is a car model with CarPhysics
+            if (model.type === 'car' && config?.physics && 'maxSpeed' in config.physics) {
+                const carPhysics = config.physics as any; // Type assertion since we checked the properties
+                return {
+                    maxSpeed: carPhysics.maxSpeed || 0,
+                    acceleration: carPhysics.acceleration || 0,
+                    brakeForce: carPhysics.brakeForce || 0
+                };
+            }
+            
+            return { maxSpeed: 0, acceleration: 0, brakeForce: 0 };
+        } catch (error) {
+            console.error('Failed to parse model config:', error);
+            return { maxSpeed: 0, acceleration: 0, brakeForce: 0 };
+        }
+    }
+
+
+
+    private formatStatValue(value: number, type: 'speed' | 'acceleration' | 'brake'): string {
+        switch (type) {
+            case 'speed':
+                return (value * 2000).toFixed(0); // Convert to km/h-like scale
+            case 'acceleration':
+                return (value * 20000).toFixed(0); // Convert to readable scale
+            case 'brake':
+                return (value * 1000).toFixed(0); // Convert to readable scale
+            default:
+                return value.toString();
+        }
+    }
+
+    private getStatClass(value: number, type: 'speed' | 'acceleration' | 'brake'): string {
+        const formattedValue = parseFloat(this.formatStatValue(value, type));
+        
+        switch (type) {
+            case 'speed':
+                if (formattedValue >= 120) return 'ultra-performance';
+                if (formattedValue >= 80) return 'high-performance';
+                return '';
+            case 'acceleration':
+                if (formattedValue >= 8) return 'ultra-performance';
+                if (formattedValue >= 5) return 'high-performance';
+                return '';
+            case 'brake':
+                if (formattedValue >= 6) return 'ultra-performance';
+                if (formattedValue >= 4) return 'high-performance';
+                return '';
+            default:
+                return '';
+        }
+    }
+
+    private createPerformanceStatsHTML(model: ModelResponse): string {
+        const stats = this.getPerformanceStats(model);
+        
+        // Calculate percentages for bar widths (normalize to 0-100%)
+        const maxSpeedPercent = Math.min((parseFloat(this.formatStatValue(stats.maxSpeed, 'speed')) / 300) * 100, 100);
+        const accelerationPercent = Math.min((parseFloat(this.formatStatValue(stats.acceleration, 'acceleration')) / 10) * 100, 100);
+
+        return `
+            <div class="model-stats">
+                <div class="stat-row">
+                    <span class="stat-label">Speed</span>
+                    <div class="stat-bar-container">
+                        <div class="stat-bar speed ${this.getStatClass(stats.maxSpeed, 'speed') ? 'high-performance' : ''}" 
+                             style="width: ${maxSpeedPercent}%"></div>
+                    </div>
+                    <span class="stat-value">${this.formatStatValue(stats.maxSpeed, 'speed')}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Accel</span>
+                    <div class="stat-bar-container">
+                        <div class="stat-bar acceleration ${this.getStatClass(stats.acceleration, 'acceleration') ? 'high-performance' : ''}" 
+                             style="width: ${accelerationPercent}%"></div>
+                    </div>
+                    <span class="stat-value">${this.formatStatValue(stats.acceleration, 'acceleration')}</span>
+                </div>
+            </div>
+        `;
     }
 } 

@@ -360,7 +360,7 @@ public class AuthController : ControllerBase
 
     [HttpPost("request-otp")]
     [AllowAnonymous]
-    [EnableRateLimiting("otp")]
+    // [EnableRateLimiting("otp")]
     public async Task<ActionResult<RequestOtpResponse>> RequestOtp([FromBody] RequestOtpRequest request)
     {
         try
@@ -486,7 +486,7 @@ public class AuthController : ControllerBase
     
     [HttpPost("verify-otp")]
     [AllowAnonymous]
-    [EnableRateLimiting("otp")]
+    //[EnableRateLimiting("otp")]
     public async Task<ActionResult<LoginResponse>> VerifyOtp([FromBody] VerifyOtpRequest request)
     {
         try
@@ -565,7 +565,7 @@ public class AuthController : ControllerBase
 
     [HttpPost("resend-otp")]
     [AllowAnonymous]
-    [EnableRateLimiting("otp")]
+    //[EnableRateLimiting("otp")]
     public async Task<ActionResult<RequestOtpResponse>> ResendOtp([FromBody] RequestOtpRequest request)
     {
         try

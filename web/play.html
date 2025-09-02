@@ -22,7 +22,24 @@
   <title>Drive Anywhere on Earth | Glenn Explore</title>
   <meta property="og:description" content="Explore the world in this 3D open-world driving game. Race through real cities, customize cars, and explore with friends worldwide. Available instantly in your browser!">
   <meta property="og:image" content="https://playglenn.com/how-to/camera-control-1.jpg">
-
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "VideoGame",
+      "name": "Glenn Explore",
+      "description": "3D open-world driving game where you can explore real locations",
+      "operatingSystem": "Web Browser",
+      "applicationCategory": "Game",
+      "url": "https://playglenn.com",
+      "keywords": "open world game, 3D driving, explore Earth, online multiplayer, browser game",
+      "offers": {
+        "@type": "Offer",
+        "availability": "https://schema.org/OnlineOnly",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+    </script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -127,6 +144,16 @@
   </header>
 
   <div id="app">
+    <!-- <script type="text/javascript">
+      atOptions = {
+        'key' : 'faf210ea4cd91f923f43cf4e82d73fcc',
+        'format' : 'iframe',
+        'height' : 90,
+        'width' : 728,
+        'params' : {}
+      };
+    </script>
+    <script type="text/javascript" src="//www.highperformanceformat.com/faf210ea4cd91f923f43cf4e82d73fcc/invoke.js"></script> -->
     <div id="map"></div>
   </div>
   <script type="module" src="/src/main.ts"></script>

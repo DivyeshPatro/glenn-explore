@@ -5,7 +5,7 @@
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-09DQDSPML1"></script>
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5289070304089253"
     crossorigin="anonymous"></script>
-  <script>
+  <script> 
     window.dataLayer = window.dataLayer || [];
     function gtag() { dataLayer.push(arguments); }
     gtag('js', new Date());
@@ -37,6 +37,9 @@
 
   <link rel="icon" type="image/x-icon" href="/public/favicon.ico" />
 
+  <!-- ADSTERRA ADS -->
+  <!-- <script type='text/javascript' src='//pl26369666.profitableratecpm.com/5b/e2/9e/5be29e1e488a250bc37e328d96e27ca5.js'></script> -->
+  <!-- ADSTERRA ADS -->
   <!-- JSON-LD Structured Data -->
   <script type="application/ld+json">
     {
@@ -243,6 +246,55 @@
       margin-top: 1rem;
       background: var(--primary-gradient);
       border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* Secondary CTA button - subtle style */
+    .secondary-cta {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.8);
+      text-decoration: none;
+      padding: 0.8rem 1.8rem;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      font-weight: 500;
+      transition: all 0.3s ease;
+      font-size: 0.95rem;
+      border-radius: 8px;
+      letter-spacing: 0.5px;
+      position: relative;
+      z-index: 2;
+      margin-top: 1rem;
+      margin-left: 1rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .secondary-cta:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.4);
+    }
+
+    .button-container {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .button-container {
+        flex-direction: column;
+        gap: 0.8rem;
+      }
+      
+      .secondary-cta {
+        margin-left: 0;
+        margin-top: 0;
+      }
     }
 
     /* Play button - Main CTA */
@@ -695,7 +747,10 @@
   <div class="logo" style="background-image: url('/hero.jpg')">
     <h1>GLENN EXPLORE</h1>
     <p>A 3D Multiplayer Driving Adventure</p>
-    <a href="/play" class="play-button">Play Glenn Explore</a>
+    <div class="button-container">
+      <a href="/play" class="play-button">Play Glenn Explore</a>
+      <a href="https://beta.playglenn.com" class="secondary-cta">Play GlennScape (Beta)?</a>
+    </div>
   </div>
 <!-- Test -->
 <!-- <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-5289070304089253" data-ad-slot="2530211400"
@@ -703,6 +758,17 @@
 <script>
   (adsbygoogle = window.adsbygoogle || []).push({});
 </script> -->
+
+<!-- <script type="text/javascript">
+	atOptions = {
+		'key' : 'faf210ea4cd91f923f43cf4e82d73fcc',
+		'format' : 'iframe',
+		'height' : 90,
+		'width' : 728,
+		'params' : {}
+	};
+</script>
+<script type="text/javascript" src="//www.highperformanceformat.com/faf210ea4cd91f923f43cf4e82d73fcc/invoke.js"></script> -->
 
   <div class="container">
     <!-- Left Column -->

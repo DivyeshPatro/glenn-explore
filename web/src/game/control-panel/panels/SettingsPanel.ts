@@ -39,6 +39,9 @@ export class SettingsPanel extends BasePanelUI {
           <button class="control-btn change-model" title="Change Model">
             Change Model
           </button>
+          <button class="control-btn minecraft-walking" title="Switch to Realistic Bob">
+            👷‍♂️ Realistic Bob
+          </button>
         </div>
 
       
@@ -189,6 +192,13 @@ export class SettingsPanel extends BasePanelUI {
     modelChangeBtn?.addEventListener('click', () => {
         window.showModelSelector();
         trackQuestEvent('MODEL_SELECTOR_OPEN');
+    });
+
+    // Minecraft Walking button (NEW)
+    const minecraftWalkingBtn = content.querySelector('.minecraft-walking');
+    minecraftWalkingBtn?.addEventListener('click', () => {
+        console.log('Switching to Bob the Builder! Can we fix it? YES WE CAN!');
+        window.dispatchEvent(new CustomEvent('player:switch_to_minecraft_walking'));
     });
 
     // Movement Mode toggle (NEW)

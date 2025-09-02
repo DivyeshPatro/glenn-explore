@@ -17,6 +17,7 @@ import { TeleportOptions } from './types/teleport'
 import { ModelClient } from './game/api/ModelClient'
 import { initializeQuests } from './game/quests/engine/initializeQuests'
 import { DonationPopover } from './game/UI/DonationPopover'
+import { PAYWALL } from './config'
 
 // Initialize input focus tracking
 InputUtils.initialize();
@@ -85,7 +86,7 @@ async function setupScene() {
     PlayerStore.setIsGuest(authResult.isGuest);
     PlayerStore.setPlayerId(authResult.playerId);
     //If user hasn't paid, show intro with payment step
-    if (!authResult.hasPaid) {
+    if (PAYWALL && !authResult.hasPaid) {
       const introController = new IntroController(authClient);
       await introController.showIntro(authResult, (initialPosition: [number, number]) => {
         initializeGame(player, initialPosition, realtimeController, teleportWrapper);
@@ -156,7 +157,7 @@ function initializeGame(
   map = new mapboxgl.Map(mapOptions);
 
 
-  map.setConfigProperty('basemap', 'lightPreset', PlayerStore.getTimeOfDay());
+  map.setConfigProperty('basemap', 'lightPreset', PlayerStore.getTimeOfDay() || 'dusk');
   // Add terrain source and layer
   map.on('style.load', () => {
 
@@ -249,10 +250,15 @@ function initializeGame(
             console.error('Failed to fetch unlocked models:', error);
           }
           
+          // TODO: Uncomment this when we want to show the donation popover
+          // setTimeout(() => {
+          //   DonationPopover.showFirst(() => {
+          //     window.showModelSelector();
+          //   });
+          // }, 1000);
+
           setTimeout(() => {
-            DonationPopover.showFirst(() => {
               window.showModelSelector();
-            });
           }, 1000);
           
           Toast.show({

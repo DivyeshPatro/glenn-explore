@@ -2,6 +2,7 @@ import { Threebox } from 'threebox-plugin';
 import { IFollowable } from '../types/IFollowable';
 import { PlayerState } from './states/PlayerState';
 import { WalkingState } from './states/WalkingState';
+import { MinecraftWalkingState } from './states/MinecraftWalkingState';
 import { CameraController } from '../CameraController';
 import { PlayerUI } from './ui/PlayerUI';
 import { CarState } from './states/CarState';
@@ -68,11 +69,16 @@ export class PlayerController implements IFollowable {
     private lastZoom: number = 0;
     private lastLng: number = 0;
     private lastLat: number = 0;
+    
+    // MinecraftWalking camera throttling for better performance 🎥
+    private lastMinecraftCameraUpdate: number = 0;
+    private minecraftCameraInterval: number = 1000; // Update every 1 second for Bob!
 
     constructor() {
         new VehicleStatsController();
         this.setupChatListener();
         this.setupStateSwitch();
+        this.setupMinecraftWalkingListener();
         document.addEventListener('keydown', this.handleKeyDown);
         document.addEventListener('keyup', this.handleKeyUp);
     }
@@ -115,6 +121,26 @@ export class PlayerController implements IFollowable {
             // if (key === 'f') {
             //     this.toggleFlyingMode();
             // }
+        });
+    }
+
+    private setupMinecraftWalkingListener(): void {
+        // Listen for minecraft walking switch event
+        window.addEventListener('player:switch_to_minecraft_walking', async () => {
+            console.log('Bob the Builder time! Can we fix it? YES WE CAN! 🔨👷‍♂️');
+            try {
+                if (this.tb) {
+                    const minecraftState = new MinecraftWalkingState(this.tb);
+                    await this.setState(minecraftState);
+                    this.showMessage("Realistic Bob reporting for duty! 👷‍♂️🔨", 2000);
+                } else {
+                    console.error('Threebox not initialized');
+                    this.showMessage("Error: Game not ready", 2000);
+                }
+            } catch (error) {
+                console.error('Failed to switch to minecraft walking:', error);
+                this.showMessage("Failed to switch to Minecraft mode", 2000);
+            }
         });
     }
 
@@ -170,9 +196,21 @@ export class PlayerController implements IFollowable {
 
         // Make sure current state matches saved movement mode
         this.currentState = new CarState(this.tb, 'lambo', defaultConfig);
-
+        // Check for dev mode query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const isDevMode = urlParams.get('dev') === 'true';
         await this.setState(this.currentState);
-        this.startUpdateLoop();
+        CameraController.getMap().flyTo({
+            center: [this._coordinates[0], this._coordinates[1]],
+            zoom: 14,
+            pitch: 45,
+            bearing: 0,
+            duration: isDevMode ? 0 : 7500,
+            essential: true
+        });
+        setTimeout(() => {
+            this.startUpdateLoop();
+        }, isDevMode ? 0 : 7500);
         setInterval(() => {
             PlayerStore.setCurrentSpeed(this.currentState!.currentSpeed);
             PlayerStore.setCoordinates([this._coordinates[0], this._coordinates[1], this.currentState!.verticalPosition ?? this._elevation]);
@@ -189,7 +227,10 @@ export class PlayerController implements IFollowable {
             this.update();
             this.animationFrameId = requestAnimationFrame(animate);
             if (PlayerStore.isFollowingCar()) {
-                if (PlayerStore.isPlayerFlying() && this.currentState!.verticalPosition && this.currentState!.verticalPosition > this._elevation + 5) {
+                // Special handling for MinecraftWalkingState - relaxed camera! 🎮
+                if (this.currentState instanceof MinecraftWalkingState) {
+                    this.updateMinecraftCamera();
+                } else if (PlayerStore.isPlayerFlying() && this.currentState!.verticalPosition && this.currentState!.verticalPosition > this._elevation + 5) {
                     const camera = CameraController.getMap().getFreeCameraOptions();
 
                     // Get current zoom and elevation data
@@ -270,6 +311,65 @@ export class PlayerController implements IFollowable {
             }
         };
         animate();
+    }
+
+    // Intelligent camera update for MinecraftWalkingState! 🧠
+    // ROTATION = IMMEDIATE (responsive turning)
+    // MOVEMENT = THROTTLED (CPU-friendly walking)
+    private updateMinecraftCamera(): void {
+        const currentTime = performance.now();
+        const bearing = -this._rotation.z + BearingController.getBearing();
+        const pitch = PitchController.getPitch();
+        const lng = this._coordinates[0];
+        const lat = this._coordinates[1];
+        const zoom = ZoomController.getZoom();
+
+        // 🔄 IMMEDIATE ROTATION UPDATES (responsive feel!)
+        const bearingDiff = Math.abs(bearing - this.lastBearing);
+        const pitchDiff = Math.abs(pitch - this.lastPitch);
+        
+        // When Bob turns his head, camera follows instantly! No lag on controls!
+        // if (bearingDiff > 20 || pitchDiff > 10) {
+        //     // Instant rotation for responsive controls
+        //     CameraController.getMap().setBearing(bearing);
+        //     if (pitchDiff > 6) {
+        //         CameraController.getMap().easeTo({
+        //             center: [lng, lat],
+        //             zoom: zoom,
+        //             duration: 600, // Smooth but responsive
+        //             essential: true,
+        //             pitch: pitch,
+        //             bearing: bearing
+        //         });
+        //     }
+        //     this.lastBearing = bearing;
+        //     this.lastPitch = pitch;
+        // }
+
+        // 🚶 THROTTLED POSITION UPDATES (CPU-friendly movement!)
+        // Only update position every 1 second while walking
+        if (currentTime - this.lastMinecraftCameraUpdate >= this.minecraftCameraInterval) {
+            const positionDiff = Math.abs(lng - this.lastLng) + Math.abs(lat - this.lastLat);
+            const zoomDiff = Math.abs(zoom - this.lastZoom);
+            
+            // Smooth camera movement when Bob walks around
+            if (positionDiff > 0.00111 || zoomDiff > 0.5) {
+                CameraController.getMap().easeTo({
+                    center: [lng, lat],
+                    zoom: zoom,
+                    duration: 600, // Smooth but responsive
+                    essential: true,
+                    pitch: pitch,
+                    bearing: bearing
+                });
+                
+                this.lastLng = lng;
+                this.lastLat = lat;
+                this.lastZoom = zoom;
+            }
+            
+            this.lastMinecraftCameraUpdate = currentTime;
+        }
     }
 
     public async setState(state: PlayerState<ModelConfig>): Promise<void> {

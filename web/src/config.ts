@@ -9,6 +9,8 @@ export const DEFAULT_COORDINATES = {
   lng: 11.979125,
   lat: 57.697530,
   zoom: 20,
-  pitch: 85,
+  pitch: 75,
   bearing: -140.0
 }; 
+
+export const PAYWALL = false

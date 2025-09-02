@@ -1,4 +1,4 @@
-import { DEFAULT_COORDINATES } from '../../config';
+import { DEFAULT_COORDINATES, PAYWALL } from '../../config';
 import { PlayerStore } from '../stores/PlayerStore';
 import { IntroOptions, IntroStep, LoginState, PaymentState, InstructionsState } from './IntroTypes';
 import './intro.css';
@@ -334,7 +334,7 @@ export class IntroUI {
       if (response) {
         this.state.loginState.isVerified = true;
 
-        if (!response.hasPaid) {
+        if (PAYWALL && !response.hasPaid) {
           this.state.currentStep = 'payment';
         } else {
           this.state.currentStep = 'instructions';

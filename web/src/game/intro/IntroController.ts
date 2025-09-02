@@ -3,6 +3,7 @@ import { AuthClient } from '../realtime/AuthClient';
 import { IntroOptions } from './IntroTypes';
 import { IntroUI } from './IntroUI';
 import { LoginResponse } from '../realtime/types/Auth';
+import { PAYWALL } from '../../config';
 
 export class IntroController {
   private introUI: IntroUI;
@@ -64,7 +65,7 @@ export class IntroController {
           localStorage.setItem(this.playerIdKey, response.username);
 
           // If user hasn't paid, show payment UI
-          if (!response.hasPaid) {
+          if (PAYWALL && !response.hasPaid) {
             return response;
           }
 

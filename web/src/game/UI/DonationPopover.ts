@@ -187,8 +187,8 @@ export class DonationPopover {
           <br><br>
           <span class="donation-highlight">Supporters get 'Donator' status with special perks! 💎</span>
           <br><br>
-          <strong>📱 Oh, and I'm making an iOS app!</strong> <a href="https://x.com/WilliamHolmbe19/status/1929613305917984922" target="_blank" style="color: #4fc3f7;">Check out the demo!</a><br>
-          Send me a message on twitter/X if you want to be an early beta tester! 🚀
+          <strong>🧑‍💻 Want to become a better vibecoder?</strong> <a href="https://vibecodementor.net?utm_source=glenn-explore&utm_medium=popup&utm_campaign=vibecoder-traffic-test&utm_content=community-free" target="_blank" style="color: #4fc3f7;">Join the VibeCodeMentor community!</a><br>
+          Learn game dev, full-stack development, and level up your coding skills with free content! 🚀
           <br><br>
           <em>Your support keeps the servers running - thank you!</em>
         </div>

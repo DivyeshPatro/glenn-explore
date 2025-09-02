@@ -26,6 +26,16 @@ export class RemotePlayer {
     private animationFrameId: number | null = null;
     private lastAnimationTime: number = 0;
     private readonly NAME_VISIBILITY_DISTANCE = 1; // Distance in kilometers
+    
+    // Minecraft character parts for remote players! 🧱
+    private characterGroup: THREE.Group | null = null;
+    private head: THREE.Mesh | null = null;
+    private body: THREE.Mesh | null = null;
+    private leftArm: THREE.Mesh | null = null;
+    private rightArm: THREE.Mesh | null = null;
+    private leftLeg: THREE.Mesh | null = null;
+    private rightLeg: THREE.Mesh | null = null;
+    private walkCycle: number = 0;
 
     constructor(
         private map: mapboxgl.Map,
@@ -60,35 +70,41 @@ export class RemotePlayer {
         this.modelType = this.data.state.modelType;
         this.animationState = this.data.state.animationState;
 
+        // 🧱 SPECIAL HANDLING FOR MINECRAFT CHARACTERS! 
+        if (this.modelType === 'minecraft') {
+            await this.createMinecraftCharacter();
+            return;
+        }
+
         // If models aren't loaded yet, implement a backoff retry mechanism
         if (Object.keys(ModelClient.AVAILABLE_MODELS).length === 0) {
-            
+
             // Define a backoff retry function with exponential delay
             const retryWithBackoff = async (maxRetries: number = 5, initialDelay: number = 500): Promise<void> => {
                 let retryCount = 0;
                 let delay = initialDelay;
-                
+
                 while (retryCount < maxRetries) {
                     // Wait for the current delay
                     await new Promise(resolve => setTimeout(resolve, delay));
-                    
+
                     // Check if models are now available
-                    if (Object.keys(ModelClient.AVAILABLE_MODELS).length > 0 && 
+                    if (Object.keys(ModelClient.AVAILABLE_MODELS).length > 0 &&
                         ModelClient.AVAILABLE_MODELS[this.data.state.modelType]) {
                         return;
                     }
-                    
+
                     // Increase retry count and apply exponential backoff
                     retryCount++;
                     delay = Math.min(delay * 2, 10000); // Cap at 10 seconds
                 }
-                
+
                 console.error('Failed to load models after maximum retry attempts');
             };
-            
+
             // Wait for models to be loaded
             await retryWithBackoff();
-            
+
             // Try to get the model again after retries
             this.modelType = this.data.state.modelType;
             this.animationState = this.data.state.animationState;
@@ -137,9 +153,93 @@ export class RemotePlayer {
         }
     }
 
+    // Create a realistic Bob the Builder character for remote minecraft players! 👷‍♂️
+    private async createMinecraftCharacter(): Promise<void> {
+        this.characterGroup = new THREE.Group();
+
+        // Bob the Builder colors for remote players! 👷‍♂️
+        const headMaterial = new THREE.MeshPhongMaterial({ color: 0xffdd00, shininess: 30 }); // Shiny yellow hard hat
+        const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x1177dd }); // Brighter blue overalls
+        const armMaterial = new THREE.MeshPhongMaterial({ color: 0xffdbaa }); // Better skin color
+        const legMaterial = new THREE.MeshPhongMaterial({ color: 0x654321 }); // Rich brown work pants
+        const beltMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 }); // Dark tool belt
+        const eyeMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 }); // Black eyes
+
+        // Scale factor for remote Bob
+        const scale = 1.8;
+
+        // Build character in Z-up orientation - better proportions! 
+        const headGeometry = new THREE.BoxGeometry(0.45 * scale, 0.45 * scale, 0.45 * scale);
+        this.head = new THREE.Mesh(headGeometry, headMaterial);
+        this.head.position.set(0, 0, 1.75 * scale);
+
+        const bodyGeometry = new THREE.BoxGeometry(0.55 * scale, 0.3 * scale, 0.8 * scale);
+        this.body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        this.body.position.set(0, 0, 1.1 * scale);
+
+        const armGeometry = new THREE.BoxGeometry(0.22 * scale, 0.22 * scale, 0.7 * scale);
+        this.leftArm = new THREE.Mesh(armGeometry, armMaterial);
+        this.leftArm.position.set(-0.385 * scale, 0, 1.1 * scale);
+        
+        this.rightArm = new THREE.Mesh(armGeometry, armMaterial);
+        this.rightArm.position.set(0.385 * scale, 0, 1.1 * scale);
+
+        const legGeometry = new THREE.BoxGeometry(0.24 * scale, 0.24 * scale, 0.8 * scale);
+        this.leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+        this.leftLeg.position.set(-0.15 * scale, 0, 0.4 * scale);
+        
+        this.rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+        this.rightLeg.position.set(0.15 * scale, 0, 0.4 * scale);
+
+        // Add simple eyes and tool belt
+        const eyeGeometry = new THREE.BoxGeometry(0.06 * scale, 0.06 * scale, 0.06 * scale);
+        const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        leftEye.position.set(-0.1 * scale, 0.2 * scale, 1.82 * scale);
+        
+        const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        rightEye.position.set(0.1 * scale, 0.2 * scale, 1.82 * scale);
+
+        const beltGeometry = new THREE.BoxGeometry(0.65 * scale, 0.18 * scale, 0.12 * scale);
+        const toolBelt = new THREE.Mesh(beltGeometry, beltMaterial);
+        toolBelt.position.set(0, 0, 0.85 * scale);
+
+        // Add all parts to the group
+        this.characterGroup.add(this.head);
+        this.characterGroup.add(this.body);
+        this.characterGroup.add(this.leftArm);
+        this.characterGroup.add(this.rightArm);
+        this.characterGroup.add(this.leftLeg);
+        this.characterGroup.add(this.rightLeg);
+        this.characterGroup.add(leftEye);
+        this.characterGroup.add(rightEye);
+        this.characterGroup.add(toolBelt);
+
+        // Create the Threebox object
+        const options = {
+            obj: this.characterGroup,
+            type: 'custom',
+            units: 'meters',
+            anchor: 'center'
+        };
+
+        this.model = this.tb.Object3D(options);
+        
+        if (this.model) {
+            this.model.setCoords([
+                this.data.position.coordinates[0], 
+                this.data.position.coordinates[1], 
+                this.data.position.coordinates[2]
+            ]);
+            this.model.setRotation(this.data.position.rotation);
+            this.tb.add(this.model);
+            
+            // Start simple walking animation for remote minecraft characters
+            this.startMinecraftAnimationLoop();
+        }
+    }
+
     private startAnimationLoop(): void {
         if (this.animationFrameId) return;
-
         const animate = (time: number) => {
             if (!this.mixer) return;
 
@@ -157,13 +257,67 @@ export class RemotePlayer {
         this.animationFrameId = requestAnimationFrame(animate);
     }
 
+    // Simple walking animation for remote minecraft characters! 🚶‍♂️
+    private startMinecraftAnimationLoop(): void {
+        if (this.animationFrameId) return;
+        
+        const animate = (time: number) => {
+            if (!this.characterGroup) return;
+
+            if (this.lastAnimationTime === 0) {
+                this.lastAnimationTime = time;
+            }
+
+            const deltaTime = (time - this.lastAnimationTime) * 0.001;
+            this.lastAnimationTime = time;
+
+            // Animate based on animation state
+            if (this.animationState === 'walk' || this.animationState === 'running') {
+                this.walkCycle += deltaTime * (this.animationState === 'running' ? 8 : 4);
+                this.animateMinecraftWalking();
+            } else {
+                this.resetMinecraftPose();
+            }
+
+            this.animationFrameId = requestAnimationFrame(animate);
+        };
+
+        this.animationFrameId = requestAnimationFrame(animate);
+    }
+
+    private animateMinecraftWalking(): void {
+        if (!this.leftArm || !this.rightArm || !this.leftLeg || !this.rightLeg) return;
+
+        // Simple pendulum motion for arms and legs
+        const armSwing = Math.sin(this.walkCycle) * 0.3;
+        const legSwing = Math.sin(this.walkCycle) * 0.4;
+
+        // Rotate arms opposite to legs (X-axis rotation)
+        this.leftArm.rotation.x = armSwing;
+        this.rightArm.rotation.x = -armSwing;
+
+        // Rotate legs (X-axis rotation)
+        this.leftLeg.rotation.x = legSwing;
+        this.rightLeg.rotation.x = -legSwing;
+    }
+
+    private resetMinecraftPose(): void {
+        if (!this.leftArm || !this.rightArm || !this.leftLeg || !this.rightLeg) return;
+
+        // Reset all rotations to 0
+        this.leftArm.rotation.x = 0;
+        this.rightArm.rotation.x = 0;
+        this.leftLeg.rotation.x = 0;
+        this.rightLeg.rotation.x = 0;
+    }
+
     public getCoordinates(): [number, number, number] {
         return this.data.position.coordinates;
     }
 
     public updatePosition(coordinates: [number, number, number], rotation: { x: number, y: number, z: number }): void {
         this.lastUpdateTime = Date.now();
-
+        console.log(this.modelType)
         this.data.position = {
             coordinates,
             rotation,
@@ -192,6 +346,8 @@ export class RemotePlayer {
 
         this.data.state = state;
 
+        console.log(this.model)
+
         // Handle model change
         if (modelChanged) {
             if (this.model) {
@@ -199,6 +355,18 @@ export class RemotePlayer {
                 this.model = null;
                 this.mixer = null;
                 this.currentAnimation = null;
+            }
+
+            // Clean up minecraft character parts if switching away from minecraft
+            if (this.characterGroup) {
+                this.characterGroup = null;
+                this.head = null;
+                this.body = null;
+                this.leftArm = null;
+                this.rightArm = null;
+                this.leftLeg = null;
+                this.rightLeg = null;
+                this.walkCycle = 0;
             }
 
             this.modelType = state.modelType;
@@ -214,6 +382,12 @@ export class RemotePlayer {
     }
 
     private playAnimation(animationName: string): void {
+        // For minecraft characters, animation is handled by startMinecraftAnimationLoop
+        if (this.modelType === 'minecraft') {
+            this.animationState = animationName;
+            return;
+        }
+
         if (!this.model || !this.mixer) return;
 
 
@@ -333,7 +507,7 @@ export class RemotePlayer {
         this.floatingNameElement.className = 'remote-player-floating-name';
         this.floatingNameElement.textContent = this.data.name;
         document.body.appendChild(this.floatingNameElement);
-        
+
         // Add styles if they don't exist yet
         if (!document.querySelector('#remote-player-floating-name-style')) {
             const style = document.createElement('style');
@@ -359,16 +533,16 @@ export class RemotePlayer {
             `;
             document.head.appendChild(style);
         }
-        
+
         // Start the update loop for the floating name
         this.startFloatingNameUpdateLoop();
     }
-    
+
     private startFloatingNameUpdateLoop(): void {
         if (this.floatingNameUpdateInterval) {
             window.cancelAnimationFrame(this.floatingNameUpdateInterval);
         }
-        
+
         const updateLoop = () => {
             if (this.floatingNameElement) {
                 this.updateFloatingNamePosition();
@@ -377,9 +551,9 @@ export class RemotePlayer {
                 this.floatingNameUpdateInterval = null;
             }
         };
-        
+
         this.floatingNameUpdateInterval = window.requestAnimationFrame(updateLoop);
-        
+
         // Show the name after a small delay to ensure positioning is correct
         setTimeout(() => {
             if (this.floatingNameElement) {
@@ -387,7 +561,7 @@ export class RemotePlayer {
             }
         }, 100);
     }
-    
+
     private updateFloatingNamePosition(): void {
         if (!this.floatingNameElement || !this.data.position.coordinates) return;
 
@@ -415,12 +589,12 @@ export class RemotePlayer {
                     }
                 }, 10);
             }
-            
+
             const screenCoords = this.map.project([
                 this.data.position.coordinates[0],
                 this.data.position.coordinates[1]
             ]);
-            
+
             // Position above the vehicle (40px higher than message position)
             this.floatingNameElement.style.transform = `translate(-50%, 0) translate(0, ${screenCoords.y - 50}px)`;
             this.floatingNameElement.style.top = '0';
@@ -428,7 +602,7 @@ export class RemotePlayer {
         } else if (this.floatingNameElement.style.display !== 'none') {
             // Hide when zoom is too low
             this.floatingNameElement.style.opacity = '0';
-            
+
             // Remove from DOM flow after fade out animation completes
             setTimeout(() => {
                 if (this.floatingNameElement && ZoomController.getZoom() < 15) {
@@ -461,7 +635,7 @@ export class RemotePlayer {
             window.cancelAnimationFrame(this.messageUpdateInterval);
             this.messageUpdateInterval = null;
         }
-        
+
         if (this.floatingNameUpdateInterval) {
             window.cancelAnimationFrame(this.floatingNameUpdateInterval);
             this.floatingNameUpdateInterval = null;
@@ -477,6 +651,16 @@ export class RemotePlayer {
             this.model = null;
         }
 
+        // Clean up minecraft character parts
+        this.characterGroup = null;
+        this.head = null;
+        this.body = null;
+        this.leftArm = null;
+        this.rightArm = null;
+        this.leftLeg = null;
+        this.rightLeg = null;
+        this.walkCycle = 0;
+
         this.mixer = null;
         this.currentAnimation = null;
         this.lastAnimationTime = 0;
@@ -487,7 +671,7 @@ export class RemotePlayer {
             document.body.removeChild(this.messageElement);
             this.messageElement = null;
         }
-        
+
         if (this.floatingNameElement) {
             document.body.removeChild(this.floatingNameElement);
             this.floatingNameElement = null;
@@ -531,22 +715,22 @@ export class RemotePlayer {
         const R = 6371; // Earth's radius in kilometers
         const dLat = this.toRad(lat2 - lat1);
         const dLon = this.toRad(lon2 - lon1);
-        const a = 
-            Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) * 
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
     }
 
     private toRad(degrees: number): number {
-        return degrees * (Math.PI/180);
+        return degrees * (Math.PI / 180);
     }
 
     public setName(name: string): void {
         this.data.name = name;
         this.nameElement.textContent = name;
-        
+
         if (this.floatingNameElement) {
             this.floatingNameElement.textContent = name;
         }
