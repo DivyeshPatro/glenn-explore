@@ -132,6 +132,8 @@ let vehicleState = {
   heading: 0, // radians (0 = north)
   position: null, // Will be set when vehicle spawns
   lastGroundSnapTime: 0, // Track when we last snapped to ground
+  flyMode: false, // Whether fly mode is enabled
+  verticalVelocity: 0, // Vertical velocity for fly mode
 };
 
 // Input state
@@ -140,6 +142,8 @@ let inputState = {
   backward: false,
   left: false,
   right: false,
+  up: false, // Space key for fly mode
+  down: false, // Shift key for fly mode
 };
 
 // Mobile input state (global scope)
@@ -176,7 +180,8 @@ let performanceSettings = {
 const CAMERA_MODES = {
   FIRST_PERSON: 0,
   CHASE: 1,
-  FREE: 2
+  CHASE2: 2,
+  FREE: 3
 };
 
 let cameraState = {
@@ -399,10 +404,11 @@ debugPanel.id = 'debugPanel';
       ">
         📊 Toggle Cesium FPS
       </button>
-      <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px;">
+              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 11px;">
         <div style="font-weight: 600; margin-bottom: 6px; opacity: 0.9;">Controls:</div>
         <div style="opacity: 0.7; margin-bottom: 4px;">WASD - Drive</div>
-        <div style="opacity: 0.7; margin-bottom: 6px;">C - Switch Camera</div>
+        <div style="opacity: 0.7; margin-bottom: 4px;">C - Switch Camera</div>
+        <div id="flyModeControls" style="opacity: 0.7; margin-bottom: 6px; display: none;">Space/Shift - Up/Down (Fly Mode)</div>
         <div id="cameraMode" style="margin-top: 8px; color: rgba(255, 255, 255, 0.9); font-weight: 500; padding: 4px 8px; background: rgba(255, 255, 255, 0.05); border-radius: 4px; font-size: 11px;">📹 Camera: Chase</div>
         <div id="mobileInputDebug" style="margin-top: 8px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 6px;">
           <div style="color: rgba(255, 255, 255, 0.8); font-weight: 500; margin-bottom: 6px; font-size: 10px;">Mobile Input:</div>
@@ -574,8 +580,31 @@ document.body.appendChild(debugPanel);
       gap: 6px;
     `;
 
+    // Fly mode toggle button
+    const flyButton = document.createElement('button');
+    flyButton.id = 'flyButton';
+    flyButton.innerHTML = '🚁 Fly';
+    flyButton.style.cssText = `
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 12px;
+      font-weight: 500;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      cursor: pointer;
+      border-radius: 8px;
+      backdrop-filter: blur(20px) saturate(180%);
+      transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    `;
+
     topRightControls.appendChild(timeButton);
     topRightControls.appendChild(cameraButton);
+    topRightControls.appendChild(flyButton);
     topRightControls.appendChild(searchToggle);
     document.body.appendChild(topRightControls);
 
@@ -1256,8 +1285,17 @@ document.body.appendChild(debugPanel);
       }, 200);
     });
 
+    // Enhanced fly button interactions
+    flyButton.addEventListener('click', () => {
+      toggleFlyMode();
+      flyButton.style.transform = 'scale(0.95)';
+      setTimeout(() => {
+        flyButton.style.transform = 'scale(1)';
+      }, 150);
+    });
+
     // Add hover effects for all buttons
-    [debugToggle, searchToggle, cameraButton, timeButton].forEach(button => {
+    [debugToggle, searchToggle, cameraButton, timeButton, flyButton].forEach(button => {
       button.addEventListener('mouseenter', () => {
         button.style.background = 'rgba(255, 255, 255, 0.12)';
         button.style.borderColor = 'rgba(255, 255, 255, 0.2)';
@@ -1732,7 +1770,7 @@ async function snapToGround() {
 
   if (groundHeight !== null) {
     // Position vehicle 2 meters above ground surface
-    const newHeight = groundHeight;
+    const newHeight = groundHeight + 0.5;
     vehicleState.position = Cesium.Cartesian3.fromDegrees(lon, lat, newHeight);
     vehicleState.entity.position = vehicleState.position;
    
@@ -1782,6 +1820,33 @@ function updateVehiclePhysics(deltaTime) {
       vehicleState.velocity = Math.min(vehicleState.velocity, 0);
     }
   }
+
+  // Handle vertical movement in fly mode
+  if (vehicleState.flyMode) {
+    const verticalAcceleration = 10; // m/s^2 for vertical movement
+    const maxVerticalVelocity = 20; // m/s maximum vertical speed
+    const verticalFriction = 8; // m/s^2 for vertical friction
+    
+    if (inputState.up) {
+      vehicleState.verticalVelocity += verticalAcceleration * deltaTime;
+      vehicleState.verticalVelocity = Math.min(vehicleState.verticalVelocity, maxVerticalVelocity);
+    } else if (inputState.down) {
+      vehicleState.verticalVelocity -= verticalAcceleration * deltaTime;
+      vehicleState.verticalVelocity = Math.max(vehicleState.verticalVelocity, -maxVerticalVelocity);
+    } else {
+      // Apply vertical friction when no vertical input
+      if (vehicleState.verticalVelocity > 0) {
+        vehicleState.verticalVelocity -= verticalFriction * deltaTime;
+        vehicleState.verticalVelocity = Math.max(vehicleState.verticalVelocity, 0);
+      } else if (vehicleState.verticalVelocity < 0) {
+        vehicleState.verticalVelocity += verticalFriction * deltaTime;
+        vehicleState.verticalVelocity = Math.min(vehicleState.verticalVelocity, 0);
+      }
+    }
+  } else {
+    // Reset vertical velocity when not in fly mode
+    vehicleState.verticalVelocity = 0;
+  }
 }
 
 // Movement update function
@@ -1791,9 +1856,9 @@ async function updateVehicleMovement(deltaTime) {
   // Update physics based on input
   updateVehiclePhysics(deltaTime);
 
-  // Only move if we have velocity
-  if (Math.abs(vehicleState.velocity) > 0.1) {
-    // Calculate movement in local ENU coordinates
+  // Only move if we have velocity (horizontal or vertical)
+  if (Math.abs(vehicleState.velocity) > 0.1 || (vehicleState.flyMode && Math.abs(vehicleState.verticalVelocity) > 0.1)) {
+    // Calculate horizontal movement in local ENU coordinates
     // East = X, North = Y, Up = Z in local frame
     const distance = vehicleState.velocity * deltaTime;
 
@@ -1801,22 +1866,27 @@ async function updateVehicleMovement(deltaTime) {
     // Negative distance to fix inverted movement
     const moveEast = Math.sin(vehicleState.heading) * -distance;
     const moveNorth = Math.cos(vehicleState.heading) * -distance;
+    
+    // Calculate vertical movement (only in fly mode)
+    const moveUp = vehicleState.flyMode ? vehicleState.verticalVelocity * deltaTime : 0;
 
     // Create local ENU transform at current position
     const transform = Cesium.Transforms.eastNorthUpToFixedFrame(vehicleState.position);
     // Create movement vector in local coordinates
-    const localMovement = new Cesium.Cartesian3(moveEast, moveNorth, 0);
+    const localMovement = new Cesium.Cartesian3(moveEast, moveNorth, moveUp);
     // Transform to world coordinates and add to current position
     const worldMovement = Cesium.Matrix4.multiplyByPointAsVector(transform, localMovement, new Cesium.Cartesian3());
     vehicleState.position = Cesium.Cartesian3.add(vehicleState.position, worldMovement, new Cesium.Cartesian3());
     
-    // Snap to ground only once per second (1000ms)
-    const currentTime = performance.now();
-    const timeSinceLastSnap = currentTime - vehicleState.lastGroundSnapTime;
-    
-    if (timeSinceLastSnap >= 1000) { // 1 second
-      await snapToGround();
-      vehicleState.lastGroundSnapTime = currentTime;
+    // Snap to ground only if NOT in fly mode and once per second (2000ms)
+    if (!vehicleState.flyMode) {
+      const currentTime = performance.now();
+      const timeSinceLastSnap = currentTime - vehicleState.lastGroundSnapTime;
+      
+      if (timeSinceLastSnap >= 2000) { // 2 seconds
+        await snapToGround();
+        vehicleState.lastGroundSnapTime = currentTime;
+      }
     }
     
     // Update entity position
@@ -1844,6 +1914,9 @@ function updateCamera() {
       break;
     case CAMERA_MODES.CHASE:
       updateChaseCamera();
+      break;
+    case CAMERA_MODES.CHASE2:
+      updateChase2Camera();
       break;
     case CAMERA_MODES.FREE:
       updateFreeCamera();
@@ -1892,6 +1965,22 @@ function updateFirstPersonCamera() {
 
 // Chase camera (behind the vehicle, zoomed out)
 function updateChaseCamera() {
+  const cameraDistance = 15; // meters behind (more zoomed out)
+  const cameraHeight = 30; // meters above
+
+  // Use lookAt for smooth following
+  viewer.camera.lookAt(
+    vehicleState.position,
+    new Cesium.HeadingPitchRange(
+      vehicleState.heading + Math.PI, // Look from behind
+      Cesium.Math.toRadians(-10), // Look down slightly more
+      cameraDistance
+    )
+  );
+  viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
+}
+// Chase camera (behind the vehicle, zoomed out)
+function updateChase2Camera() {
   const cameraDistance = 100; // meters behind (more zoomed out)
   const cameraHeight = 30; // meters above
 
@@ -1922,6 +2011,36 @@ function updateFreeCamera() {
   
   // Free camera stays where user positioned it - no automatic updates
   // User can control it with mouse in Cesium's default camera controls
+}
+
+// Toggle fly mode
+function toggleFlyMode() {
+  vehicleState.flyMode = !vehicleState.flyMode;
+  vehicleState.verticalVelocity = 0; // Reset vertical velocity when toggling
+  
+  const flyButton = document.getElementById('flyButton');
+  const flyModeControls = document.getElementById('flyModeControls');
+  
+  if (flyButton) {
+    if (vehicleState.flyMode) {
+      flyButton.innerHTML = '🚁 Flying';
+      flyButton.style.background = 'rgba(0, 255, 136, 0.15)';
+      flyButton.style.borderColor = 'rgba(0, 255, 136, 0.3)';
+      flyButton.style.color = 'rgba(255, 255, 255, 0.95)';
+    } else {
+      flyButton.innerHTML = '🚁 Fly';
+      flyButton.style.background = 'rgba(255, 255, 255, 0.08)';
+      flyButton.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+      flyButton.style.color = 'rgba(255, 255, 255, 0.9)';
+    }
+  }
+  
+  // Show/hide fly mode controls in debug panel
+  if (flyModeControls) {
+    flyModeControls.style.display = vehicleState.flyMode ? 'block' : 'none';
+  }
+  
+  console.log('Fly mode:', vehicleState.flyMode ? 'ON' : 'OFF');
 }
 
 // Switch camera modes
@@ -2355,6 +2474,13 @@ document.addEventListener('keydown', (event) => {
     return;
   }
 
+  // Handle Shift key separately since it doesn't have a character representation
+  if (event.key === 'Shift' && vehicleState.flyMode) {
+    inputState.down = true;
+    event.preventDefault();
+    return;
+  }
+
   switch(event.key.toLowerCase()) {
     case 'w':
       inputState.forward = true;
@@ -2379,6 +2505,12 @@ document.addEventListener('keydown', (event) => {
     case 'r':
       // Keep the old R key for testing
       vehicleState.heading += Cesium.Math.toRadians(15);
+      break;
+    case ' ': // Space key for going up in fly mode
+      if (vehicleState.flyMode) {
+        inputState.up = true;
+        event.preventDefault();
+      }
       break;
     
     // Debug controls for camera adjustment (works in Free and First Person modes)
@@ -2432,6 +2564,13 @@ document.addEventListener('keyup', (event) => {
     return;
   }
 
+  // Handle Shift key separately
+  if (event.key === 'Shift') {
+    inputState.down = false;
+    event.preventDefault();
+    return;
+  }
+
   switch(event.key.toLowerCase()) {
     case 'w':
       inputState.forward = false;
@@ -2447,6 +2586,10 @@ document.addEventListener('keyup', (event) => {
       break;
     case 'd':
       inputState.right = false;
+      event.preventDefault();
+      break;
+    case ' ': // Space key release
+      inputState.up = false;
       event.preventDefault();
       break;
   }
