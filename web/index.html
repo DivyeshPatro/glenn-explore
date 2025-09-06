@@ -737,7 +737,7 @@
         <a href="/explore-the-world">🌎 Explore the World</a>
         <a href="/create-3d-models">🎨 3D Models</a>
         <a href="https://discord.gg/ZaWdh6g4DU " target="_blank">Discord</a>
-        <a href="/play" class="play-now" id="headerPlayButton">Play Now</a>
+        <a href="/play" class="play-now">Play Now</a>
       </nav>
     </div>
   </header>
@@ -748,8 +748,8 @@
     <h1>GLENN EXPLORE</h1>
     <p>A 3D Multiplayer Driving Adventure</p>
     <div class="button-container">
-      <a href="/play" class="play-button" id="mainPlayButton">Play Glenn Explore</a>
-      <!-- <a href="https://beta.playglenn.com" class="secondary-cta">Play GlennScape (Beta)?</a> -->
+      <a href="/play" class="play-button">Play Glenn Explore</a>
+      <a href="https://beta.playglenn.com" class="secondary-cta">Play GlennScape (Beta)?</a>
     </div>
   </div>
 <!-- Test -->
@@ -778,7 +778,7 @@
         <div class="panel-title">🎮 Glenn Explore</div>
         <div class="panel-content">
           <ul class="nav-links">
-            <li><a href="/play" id="sidebarPlayButton"><span>⭐</span> Play Glenn Explore</a></li>
+            <li><a href="/play"><span>⭐</span> Play Glenn Explore</a></li>
             <!-- <li><a href="/features"><span>📋</span> View game features</a></li>
                         <li><a href="/changelog"><span>📰</span> Latest updates</a></li> -->
             <li><a href="https://discord.gg/ZaWdh6g4DU " target="_blank"
@@ -949,74 +949,6 @@
       </p>
     </div>
   </div>
-
-  <!-- A/B Testing Script -->
-  <script>
-    (function() {
-      // Generate random number between 0 and 1
-      const randomValue = Math.random();
-      
-      // 1/3 probability for Cesium (0.0 - 0.333...)
-      const shouldUseCesium = randomValue < (1/10);
-      
-      if (shouldUseCesium) {
-        // Route to Cesium for 1/3 of users
-        const playButtons = [
-          document.getElementById('mainPlayButton'),
-          document.getElementById('sidebarPlayButton'), 
-          document.getElementById('headerPlayButton')
-        ];
-        
-        playButtons.forEach(button => {
-          if (button) {
-            button.href = '/cesium';
-            // Add visual indicator for Cesium variant (optional)
-            if (button.id === 'mainPlayButton') {
-              button.innerHTML = 'Play Glenn Explore 🌍';
-            }
-          }
-        });
-        
-        // Track A/B test variant in Google Analytics
-        if (typeof gtag !== 'undefined') {
-          gtag('event', 'ab_test_assignment', {
-            'variant': 'cesium',
-            'test_name': 'play_button_routing'
-          });
-        }
-        
-        // Store variant in localStorage for consistency
-        localStorage.setItem('ab_test_variant', 'cesium');
-        
-      } else {
-        // Route to regular /play for 2/3 of users
-        if (typeof gtag !== 'undefined') {
-          gtag('event', 'ab_test_assignment', {
-            'variant': 'regular_play',
-            'test_name': 'play_button_routing'
-          });
-        }
-        
-        // Store variant in localStorage for consistency
-        localStorage.setItem('ab_test_variant', 'regular_play');
-      }
-      
-      // Optional: Add click tracking for conversion analysis
-      document.addEventListener('click', function(e) {
-        if (e.target && (e.target.id === 'mainPlayButton' || e.target.id === 'sidebarPlayButton' || e.target.id === 'headerPlayButton')) {
-          const variant = localStorage.getItem('ab_test_variant') || 'unknown';
-          if (typeof gtag !== 'undefined') {
-            gtag('event', 'play_button_click', {
-              'variant': variant,
-              'button_location': e.target.id,
-              'test_name': 'play_button_routing'
-            });
-          }
-        }
-      });
-      
-    })();
-  </script>
 </body>
 
 </html>
