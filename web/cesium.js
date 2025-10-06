@@ -2,7 +2,7 @@ import * as Cesium from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import './cesium.css';
 
-Cesium.Ellipsoid.default = Cesium.Ellipsoid.MARS;
+//Cesium.Ellipsoid.default = Cesium.Ellipsoid.MARS;
 const viewer = new Cesium.Viewer("cesiumContainer", {
   terrainProvider: false,
   timeline: false,
@@ -10,10 +10,10 @@ const viewer = new Cesium.Viewer("cesiumContainer", {
   baseLayer: false,
   baseLayerPicker: false,
   geocoder: false,
-  shadows: false,
-  globe: new Cesium.Globe(Cesium.Ellipsoid.MARS),
-  skyBox: Cesium.SkyBox.createEarthSkyBox(),
-  skyAtmosphere: new Cesium.SkyAtmosphere(Cesium.Ellipsoid.MARS),
+  shadows: false
+  //globe: new Cesium.Globe(Cesium.Ellipsoid.MARS),
+  //90oskyBox: Cesium.SkyBox.createEarthSkyBox(),
+  //skyAtmosphere: new Cesium.SkyAtmosphere(Cesium.Ellipsoid.MARS),
 });
 viewer.scene.globe.show = false;
 const scene = viewer.scene;
@@ -47,14 +47,23 @@ bloom.uniforms.delta = 1.5;
 scene.highDynamicRange = true;
 viewer.scene.postProcessStages.exposure = 1.5;
 
-// Load Mars tileset
+// // Load Mars tileset
+// try {
+//   const tileset = await Cesium.Cesium3DTileset.fromIonAssetId(3644333, {
+//     enableCollision: true,
+//   });
+//   viewer.scene.primitives.add(tileset);
+// } catch (error) {
+//   console.log(error);
+// }
+
 try {
-  const tileset = await Cesium.Cesium3DTileset.fromIonAssetId(3644333, {
-    enableCollision: true,
+  const tileset = await Cesium.createGooglePhotorealistic3DTileset({
+    onlyUsingWithGoogleGeocoder: true,
   });
   viewer.scene.primitives.add(tileset);
 } catch (error) {
-  console.log(error);
+  // Intentionally silent to preserve current behavior
 }
 
 
@@ -73,8 +82,18 @@ let r = 0;
 
 const hpRoll = new Cesium.HeadingPitchRoll();
 const hpRange = new Cesium.HeadingPitchRange();
-let speed = 1000;
-let targetSpeed = 1000; // Target speed for smooth acceleration/deceleration
+let speed = 0; // Current speed - starts at zero like a real car
+let velocity = 0; // Current velocity in m/s
+let acceleration = 0; // Current acceleration
+
+// Car physics constants - adjusted for Cesium movement scale!
+const vehicleMass = 2400; // kg (like real Cybertruck)
+const engineForce = 80000; // N (higher force for proper acceleration feel)
+const brakeForce = 120000; // N (higher braking force)
+const rollingResistance = 0.15; // Higher rolling resistance to balance movement
+const airDragCoefficient = 2.5; // Higher air resistance to balance speed
+const gravityAcceleration = 9.81; // m/s² (Earth gravity)
+const maxSpeed = 120; // "km/h units" (physics velocity represents km/h, not m/s)
 const deltaRadians = Cesium.Math.toRadians(15.0); // EXTREME turn rate for testing
 
 // Vehicle dynamics variables - for realistic flight feel
@@ -85,7 +104,7 @@ let currentVehicleHeading = 0;
 let currentVehiclePitch = 0;
 let currentVehicleRoll = 0;
 
-// Input state tracking
+// Input state tracking - car-like controls
 let inputState = {
   pitchUp: false,
   pitchDown: false,
@@ -93,16 +112,22 @@ let inputState = {
   turnRight: false,
   rollLeft: false,
   rollRight: false,
-  speedUp: false,
-  speedDown: false
+  throttle: false, // W key - accelerate
+  brake: false     // S key - brake
 };
 
-// Flight dynamics constants - tuned for realistic, heavy feel
-const vehicleLerpFactor = 0.03; // Slower vehicle response for heavy feel
-const speedLerpFactor = 0.02; // Gradual speed changes like a real aircraft
-const maxTurnRate = Cesium.Math.toRadians(1.2); // Realistic turn rate
+// Controls constants  
 const maxPitchRate = Cesium.Math.toRadians(0.8); // Slower pitch for stability
 const maxRollRate = Cesium.Math.toRadians(2.5); // Faster roll response (most agile axis)
+
+// Steering state variables
+let steeringInput = 0; // Current steering input (-1 to 1)
+
+// Vehicle geometry for realistic steering
+const wheelbase = 3.0; // Distance between front and rear axles (meters) - like real Cybertruck
+const maxSteeringAngle = Cesium.Math.toRadians(15); // Gentler maximum front wheel steering angle
+
+// Removed GPS speed measurement - was debugging overkill
 
 // Cinematic camera variables
 let targetCameraPosition = new Cesium.Cartesian3();
@@ -120,32 +145,13 @@ let lastPitch = 0;
 const cameraLerpFactor = 0.04; // Smooth camera follow that works with vehicle inertia
 const bankingFactor = 0.8; // Noticeable but realistic banking during turns
 
-// Dynamic camera distance variables
+// Simplified camera distance
 let baseDistance = 0; // Will be set when model loads
-let targetDistance = 0;
 let currentDistance = 0;
-let lastSpeed = 1000;
-let speedChangeRate = 0;
 
-// Dynamic distance constants - tuned for cinematic action!
-const speedDistanceFactor = 0.005; // More dramatic speed-based distance changes
-const turnDistanceFactor = 8.0; // Pull back significantly during sharp turns
-const accelerationDistanceFactor = 0.08; // Major pullback when accelerating/braking
-const distanceLerpFactor = 0.08; // Faster distance transitions for responsiveness
-
-// Ground following variables - ROVER MODE!
-let groundFollowingEnabled = true;
+// Simple ground following
 let roverMode = true; // Car-like behavior vs aircraft
-let groundOffset = 5.0; // Larger offset for 10x bigger Cybertruck (like wheel contact)
-let terrainSlopeSmoothing = 0.08; // How fast vehicle adapts to terrain angle
-let groundHeight = 0;
-let previousGroundHeight = 0;
-let terrainNormal = new Cesium.Cartesian3(0, 0, 1); // Current terrain normal
-let targetTerrainNormal = new Cesium.Cartesian3(0, 0, 1); // Target terrain normal
-
-// Rover physics constants
-const maxSlopeAngle = Cesium.Math.toRadians(45); // Maximum slope the rover can handle
-const sampleDistance = 5.0; // Distance to sample for terrain normal calculation
+let groundOffset = 2.0; // Height above ground
 
 // Angular interpolation function to handle wraparound properly
 function lerpAngle(start, end, factor) {
@@ -184,112 +190,129 @@ function getAngularDelta(current, previous) {
   return delta;
 }
 
-// Rover ground clamping system - makes vehicle stick to terrain like a car!
-function clampToTerrain(currentPos, scene, primitives) {
-  if (!groundFollowingEnabled || !roverMode) return { clamped: false, position: currentPos, normal: terrainNormal };
+// Removed complex terrain clamping - was overkill
 
-  try {
-    // Clamp position directly to terrain surface
-    const clampedPosition = scene.clampToHeight(currentPos, primitives);
+// Removed complex terrain normal calculation - was rocket science
 
-    if (clampedPosition) {
-      const cartographic = Cesium.Cartographic.fromCartesian(clampedPosition);
-      groundHeight = cartographic.height;
+// Removed terrain orientation - keeping it simple
 
-      // Add small offset for wheel clearance
-      const adjustedCartographic = new Cesium.Cartographic(
-        cartographic.longitude,
-        cartographic.latitude,
-        groundHeight + groundOffset
-      );
-      const finalPosition = Cesium.Cartographic.toCartesian(adjustedCartographic);
-
-      // Calculate terrain normal by sampling nearby points
-      const terrainNormalResult = calculateTerrainNormal(clampedPosition, scene, primitives);
-
-      return {
-        clamped: true,
-        position: finalPosition,
-        normal: terrainNormalResult,
-        groundHeight: groundHeight
-      };
-    }
-  } catch (error) {
-    console.log('Terrain clamping failed:', error);
+// Realistic car physics calculation
+function calculateVehiclePhysics(deltaTime) {
+  // Start with zero net force
+  let netForce = 0;
+  
+  // Engine force (throttle) - forward
+  if (inputState.throttle) {
+    netForce += engineForce;
   }
-
-  return { clamped: false, position: currentPos, normal: terrainNormal };
-}
-
-// Calculate terrain normal for proper vehicle orientation on slopes
-function calculateTerrainNormal(centerPos, scene, primitives) {
-  try {
-    const cartographic = Cesium.Cartographic.fromCartesian(centerPos);
-
-    // Sample 4 points around the center to calculate slope
-    const sampleOffsetRadians = sampleDistance / 6371000; // Convert to radians (Earth radius approximation)
-
-    const northPos = new Cesium.Cartographic(cartographic.longitude, cartographic.latitude + sampleOffsetRadians, 0);
-    const southPos = new Cesium.Cartographic(cartographic.longitude, cartographic.latitude - sampleOffsetRadians, 0);
-    const eastPos = new Cesium.Cartographic(cartographic.longitude + sampleOffsetRadians, cartographic.latitude, 0);
-    const westPos = new Cesium.Cartographic(cartographic.longitude - sampleOffsetRadians, cartographic.latitude, 0);
-
-    const northCart = Cesium.Cartographic.toCartesian(northPos);
-    const southCart = Cesium.Cartographic.toCartesian(southPos);
-    const eastCart = Cesium.Cartographic.toCartesian(eastPos);
-    const westCart = Cesium.Cartographic.toCartesian(westPos);
-
-    // Clamp sample points to terrain
-    const northClamped = scene.clampToHeight(northCart, primitives);
-    const southClamped = scene.clampToHeight(southCart, primitives);
-    const eastClamped = scene.clampToHeight(eastCart, primitives);
-    const westClamped = scene.clampToHeight(westCart, primitives);
-
-    if (northClamped && southClamped && eastClamped && westClamped) {
-      // Calculate tangent vectors
-      const northSouth = Cesium.Cartesian3.subtract(northClamped, southClamped, new Cesium.Cartesian3());
-      const eastWest = Cesium.Cartesian3.subtract(eastClamped, westClamped, new Cesium.Cartesian3());
-
-      // Calculate normal using cross product
-      const normal = Cesium.Cartesian3.cross(eastWest, northSouth, new Cesium.Cartesian3());
-      return Cesium.Cartesian3.normalize(normal, new Cesium.Cartesian3());
+  
+  // Braking/Reverse force
+  if (inputState.brake) {
+    if (velocity > 0.5) {
+      // If moving forward, brake
+      netForce -= brakeForce;
+    } else {
+      // If stopped or slow, reverse
+      netForce -= engineForce * 0.6; // Reverse with 60% of forward power
     }
-  } catch (error) {
-    console.log('Terrain normal calculation failed:', error);
   }
-
-  // Return default up normal if calculation fails
-  return new Cesium.Cartesian3(0, 0, 1);
+  
+  // Rolling resistance (always opposes motion)
+  const rollingForce = rollingResistance * vehicleMass * gravityAcceleration;
+  if (velocity > 0) {
+    netForce -= rollingForce;
+  } else if (velocity < 0) {
+    netForce += rollingForce;
+  }
+  
+  // Air drag (proportional to velocity squared)
+  const airDragForce = airDragCoefficient * velocity * Math.abs(velocity);
+  netForce -= airDragForce;
+  
+  // Calculate acceleration from Newton's second law: F = ma
+  acceleration = netForce / vehicleMass;
+  
+  // Update velocity using acceleration
+  velocity += acceleration * deltaTime;
+  //console.log(velocity);
+  // Apply speed limits - better reverse speed
+  velocity = Cesium.Math.clamp(velocity, -maxSpeed * 0.5, maxSpeed); // Better reverse speed
+  
+  // Natural deceleration when no input (engine braking + resistance)
+  if (!inputState.throttle && !inputState.brake && Math.abs(velocity) > 0.1) {
+    const naturalDeceleration = 8.0; // Higher natural slowdown rate
+    if (velocity > 0) {
+      velocity = Math.max(0, velocity - naturalDeceleration * deltaTime);
+    } else {
+      velocity = Math.min(0, velocity + naturalDeceleration * deltaTime);
+    }
+  }
+  
+  // Convert to speed units for Cesium (scale factor)
+  speed = Math.abs(velocity); // Scale for Cesium movement
+  
+  return {
+    velocity: velocity,
+    acceleration: acceleration,
+    speed: speed
+  };
 }
 
-// Apply terrain normal to vehicle orientation for realistic slope following
-function applyTerrainOrientation(hpRoll, terrainNormalVec) {
-  if (!roverMode) return hpRoll;
-
-  // Smooth transition to terrain normal
-  targetTerrainNormal = terrainNormalVec;
-  terrainNormal = Cesium.Cartesian3.lerp(terrainNormal, targetTerrainNormal, terrainSlopeSmoothing, new Cesium.Cartesian3());
-
-  // Calculate pitch and roll from terrain normal
-  const forward = new Cesium.Cartesian3(Math.cos(hpRoll.heading), Math.sin(hpRoll.heading), 0);
-  const right = Cesium.Cartesian3.cross(forward, terrainNormal, new Cesium.Cartesian3());
-  const actualForward = Cesium.Cartesian3.cross(terrainNormal, right, new Cesium.Cartesian3());
-
-  // Extract pitch and roll from terrain alignment
-  const terrainPitch = Math.asin(-actualForward.z);
-  const terrainRoll = Math.atan2(right.z, terrainNormal.z);
-
-  // Blend user input with terrain orientation
-  const blendedPitch = Cesium.Math.lerp(hpRoll.pitch, terrainPitch, 0.7);
-  const blendedRoll = Cesium.Math.lerp(hpRoll.roll, terrainRoll, 0.8);
-
-  return new Cesium.HeadingPitchRoll(hpRoll.heading, blendedPitch, blendedRoll);
+// Realistic car steering with proper geometry (Ackermann steering)
+function calculateSteeringPhysics(deltaTime) {
+  // Get steering input from keys
+  let targetSteeringInput = 0;
+  if (inputState.turnLeft) targetSteeringInput = -1;
+  if (inputState.turnRight) targetSteeringInput = 1;
+  
+  // Smooth steering input (prevents instant snappy turns)
+  const steeringLerpRate = Math.abs(velocity) < 5 ? 0.05 : 0.1; // Much slower steering buildup
+  steeringInput = Cesium.Math.lerp(steeringInput, targetSteeringInput, steeringLerpRate);
+  
+  // Apply speed-dependent steering reduction (critical for high-speed control)
+  const speedKmh = Math.abs(velocity); // Physics velocity is already in "km/h equivalent"
+  let steeringReduction = 1.0;
+  
+  if (speedKmh > 30) {
+    // Progressive steering reduction at higher speeds
+    const speedFactor = (speedKmh - 30) / 70; // 0 at 30km/h, 1 at 100km/h
+    steeringReduction = 1.0 - (speedFactor * 0.8); // Reduce up to 80% at very high speeds
+    steeringReduction = Math.max(steeringReduction, 0.2); // Never less than 20% steering
+  }
+  
+  // Convert steering input to front wheel angle with speed reduction
+  const frontWheelAngle = steeringInput * maxSteeringAngle * steeringReduction;
+  
+  // Calculate turning radius using Ackermann steering geometry
+  // R = wheelbase / tan(front_wheel_angle)
+  let turningRadius = Infinity;
+  if (Math.abs(frontWheelAngle) > 0.001) {
+    turningRadius = wheelbase / Math.tan(Math.abs(frontWheelAngle));
+  }
+  
+  // Calculate angular velocity based on vehicle speed and turning radius
+  // ω = v / R (angular velocity = velocity / radius)
+  let angularVelocity = 0;
+  if (turningRadius !== Infinity && Math.abs(velocity) > 0.1) {
+    angularVelocity = velocity / turningRadius;
+    // Apply direction based on steering input
+    angularVelocity *= Math.sign(frontWheelAngle);
+  }
+  
+  return {
+    turnRate: angularVelocity,
+    frontWheelAngle: frontWheelAngle,
+    turningRadius: turningRadius,
+    steeringInput: steeringInput,
+    speedKmh: speedKmh,
+    steeringReduction: steeringReduction
+  };
 }
 
-let position = Cesium.Cartesian3.fromDegrees(-11.870000000000001, 18.02, 50000);
+// Removed GPS speed measurement - was debugging overkill
+
+let position = Cesium.Cartesian3.fromDegrees(11.9746, 57.7089, 100); // Gothenburg, Sweden!
 let speedVector = new Cesium.Cartesian3();
-let lastGroundHeight = null;
-let tilesetReady = false;
 const fixedFrameTransform = Cesium.Transforms.localFrameToFixedFrameGenerator(
   "north",
   "west",
@@ -307,7 +330,7 @@ setTimeout(async () => {
     const planePrimitive = scene.primitives.add(
       await Cesium.Model.fromGltfAsync({
         url: "./cyber.glb",
-        scale: 100.0, // Make Cybertruck 10x larger!
+        scale: 0.5, // Make Cybertruck 10x larger!
         modelMatrix: Cesium.Transforms.headingPitchRollToFixedFrame(
           position,
           hpRoll,
@@ -335,9 +358,9 @@ setTimeout(async () => {
       hpRange.pitch = pitch;
       hpRange.range = r * 2; // Closer range for 10x larger model
 
-      // Initialize dynamic distance system - adjusted for 10x larger model
-      baseDistance = r * 2; // Closer base distance for larger model
-      currentDistance = targetDistance = baseDistance;
+      // Initialize camera distance
+      baseDistance = r * 2; // Base distance for camera
+      currentDistance = baseDistance;
 
       // Initialize cinematic camera values with proper normalization
       currentCameraHeading = targetCameraHeading = Cesium.Math.zeroToTwoPi(heading);
@@ -351,6 +374,8 @@ setTimeout(async () => {
       targetPitch = currentVehiclePitch = hpRoll.pitch;
       targetRoll = currentVehicleRoll = hpRoll.roll;
 
+      // Removed GPS speed measurement
+
       camera.lookAt(center, hpRange);
     });
 
@@ -359,17 +384,23 @@ setTimeout(async () => {
       switch (e.code) {
         case "ArrowDown":
           if (e.shiftKey) {
-            inputState.speedDown = true;
+            inputState.brake = true; // S/Down = brake
           } else {
             inputState.pitchDown = true;
           }
           break;
         case "ArrowUp":
           if (e.shiftKey) {
-            inputState.speedUp = true;
+            inputState.throttle = true; // W/Up = throttle
           } else {
             inputState.pitchUp = true;
           }
+          break;
+        case "KeyW":
+          inputState.throttle = true; // W = accelerate
+          break;
+        case "KeyS":
+          inputState.brake = true; // S = brake
           break;
         case "ArrowRight":
           if (e.shiftKey) {
@@ -401,17 +432,23 @@ setTimeout(async () => {
       switch (e.code) {
         case "ArrowDown":
           if (e.shiftKey) {
-            inputState.speedDown = false;
+            inputState.brake = false; // Release brake
           } else {
             inputState.pitchDown = false;
           }
           break;
         case "ArrowUp":
           if (e.shiftKey) {
-            inputState.speedUp = false;
+            inputState.throttle = false; // Release throttle
           } else {
             inputState.pitchUp = false;
           }
+          break;
+        case "KeyW":
+          inputState.throttle = false; // Release throttle
+          break;
+        case "KeyS":
+          inputState.brake = false; // Release brake
           break;
         case "ArrowRight":
           if (e.shiftKey) {
@@ -431,29 +468,35 @@ setTimeout(async () => {
     });
 
     viewer.scene.preUpdate.addEventListener(function (scene, time) {
-      // Process input state and update target vehicle orientation
-      if (inputState.turnLeft) targetHeading -= maxTurnRate;
-      if (inputState.turnRight) targetHeading += maxTurnRate;
+      // Calculate realistic car physics
+      const deltaTime = 1/120; // Assume 60 FPS for physics calculations
+      const physicsResult = calculateVehiclePhysics(deltaTime);
+      const steeringResult = calculateSteeringPhysics(deltaTime);
+      
+      // Apply realistic car steering - front wheels steer, rear follows
+      // Calculate where the front of the car wants to go
+      const frontWheelDirection = currentVehicleHeading + steeringResult.frontWheelAngle;
+      
+      // The car's heading changes based on how the front wheels are pointing
+      // and how fast we're moving (bicycle model)
+      if (Math.abs(velocity) > 0.1) {
+        const steeringRate = (velocity * Math.sin(steeringResult.frontWheelAngle)) / wheelbase;
+        currentVehicleHeading += steeringRate * deltaTime;
+      }
+      
+      // Process other input state 
       if (inputState.pitchUp) targetPitch += maxPitchRate;
       if (inputState.pitchDown) targetPitch -= maxPitchRate;
       if (inputState.rollLeft) targetRoll -= maxRollRate;
       if (inputState.rollRight) targetRoll += maxRollRate;
-      if (inputState.speedUp) targetSpeed += 50;
-      if (inputState.speedDown) {
-        targetSpeed = Math.min(targetSpeed - 50, 0);
-        if (targetSpeed < 0) {
-          targetSpeed = 0;
-        }
-      }
+      
+      // Normalize heading to [0, 2π]
+      currentVehicleHeading = Cesium.Math.zeroToTwoPi(currentVehicleHeading);
 
-      // Normalize target heading to [0, 2π]
-      targetHeading = Cesium.Math.zeroToTwoPi(targetHeading);
-
-      // Smooth vehicle dynamics - vehicle responds gradually to input
-      currentVehicleHeading = lerpAngle(currentVehicleHeading, targetHeading, vehicleLerpFactor);
-      currentVehiclePitch = Cesium.Math.lerp(currentVehiclePitch, targetPitch, vehicleLerpFactor);
-      currentVehicleRoll = Cesium.Math.lerp(currentVehicleRoll, targetRoll, vehicleLerpFactor);
-      speed = Cesium.Math.lerp(speed, targetSpeed, speedLerpFactor);
+      // Smooth only pitch and roll (heading controlled by steering physics)
+      currentVehiclePitch = Cesium.Math.lerp(currentVehiclePitch, targetPitch, 0.05);
+      currentVehicleRoll = Cesium.Math.lerp(currentVehicleRoll, targetRoll, 0.05);
+      // speed and heading now controlled by physics systems
 
       // REMOVED all tilting logic - just focus on driving controls
 
@@ -464,7 +507,7 @@ setTimeout(async () => {
 
       speedVector = Cesium.Cartesian3.multiplyByScalar(
         Cesium.Cartesian3.UNIT_X,
-        speed / 10,
+        speed * 0.01, // Higher scaling since we reduced maxSpeed from 120 to 30
         speedVector,
       );
       position = Cesium.Matrix4.multiplyByPoint(
@@ -473,8 +516,8 @@ setTimeout(async () => {
         position,
       );
 
-      // SIMPLE ground clamping - ONLY adjust height, keep steering working
-      if (roverMode && groundFollowingEnabled) {
+      // Simple ground clamping
+      if (roverMode) {
         const directClamp = scene.clampToHeight(position, [planePrimitive]);
         if (directClamp) {
           const groundCartographic = Cesium.Cartographic.fromCartesian(directClamp);
@@ -487,7 +530,6 @@ setTimeout(async () => {
             groundCartographic.height + groundOffset
           );
           position = Cesium.Cartographic.toCartesian(adjustedCartographic);
-          console.log(`🚗 Ground height: ${groundCartographic.height.toFixed(1)}m`);
         }
       }
 
@@ -500,47 +542,30 @@ setTimeout(async () => {
       );
 
       if (isModelReady) {
-        // Cinematic camera update
+        // Simple cinematic camera update
         const center = planePrimitive.boundingSphere.center;
 
-        // Calculate heading and pitch change for banking effect using safe angular delta
+        // Calculate heading change for subtle banking effect
         const headingDelta = getAngularDelta(hpRoll.heading, lastHeading);
-        const pitchDelta = hpRoll.pitch - lastPitch; // Pitch doesn't wraparound, so regular subtraction is fine
 
-        // Calculate speed change rate for acceleration-based distance
-        speedChangeRate = speed - lastSpeed;
-
-        // Calculate dynamic camera distance based on speed, turns, and acceleration
-        const speedBasedDistance = speed * speedDistanceFactor;
-        const turnIntensity = Math.abs(headingDelta) + Math.abs(pitchDelta);
-        const turnBasedDistance = turnIntensity * turnDistanceFactor;
-        const accelerationDistance = Math.abs(speedChangeRate) * accelerationDistanceFactor;
-
-        // Update target distance with cinematic effects
-        targetDistance = baseDistance + speedBasedDistance + turnBasedDistance + accelerationDistance;
-
-        // Smooth distance transitions
-        currentDistance = Cesium.Math.lerp(currentDistance, targetDistance, distanceLerpFactor);
-
-        // Update target camera values with subtle banking
+        // Update camera values with smooth following
         targetCameraHeading = hpRoll.heading;
         targetCameraPitch = hpRoll.pitch - Cesium.Math.toRadians(20); // Look over the vehicle
-        targetCameraRoll = -headingDelta * bankingFactor; // Subtle banking during turns
+        targetCameraRoll = -headingDelta * bankingFactor * 0.3; // Reduced banking
 
-        // Smooth interpolation for cinematic movement using angular interpolation for heading
+        // Smooth interpolation for cinematic movement
         currentCameraHeading = lerpAngle(currentCameraHeading, targetCameraHeading, cameraLerpFactor);
         currentCameraPitch = Cesium.Math.lerp(currentCameraPitch, targetCameraPitch, cameraLerpFactor);
-        currentCameraRoll = Cesium.Math.lerp(currentCameraRoll, targetCameraRoll, cameraLerpFactor * 0.5); // EXTREME roll interpolation for testing
+        currentCameraRoll = Cesium.Math.lerp(currentCameraRoll, targetCameraRoll, cameraLerpFactor);
 
-        // Apply smooth camera movement with dynamic distance
+        // Apply camera movement
         hpRange.heading = currentCameraHeading;
         hpRange.pitch = currentCameraPitch;
-        hpRange.range = currentDistance;
+        hpRange.range = baseDistance;
 
-        // Use the original lookAt method (this works correctly)
         camera.lookAt(center, hpRange);
 
-        // Apply banking by calculating the difference from what we've already applied
+        // Apply subtle banking
         const rollDifference = currentCameraRoll - appliedCameraRoll;
         if (Math.abs(rollDifference) > 0.001) {
           camera.twistRight(rollDifference);
@@ -550,7 +575,6 @@ setTimeout(async () => {
         // Store current values for next frame
         lastHeading = hpRoll.heading;
         lastPitch = hpRoll.pitch;
-        lastSpeed = speed;
       }
     });
   } catch (error) {
@@ -559,19 +583,4 @@ setTimeout(async () => {
 }, 1000);
 
 
-// When animating, if the multiplier is very high (which is necessary to see rover movement),
-// model lighting flickers distractingly, so disable it
-const entitiesToDisableLightingFor = [curiosity, perseverance, ingenuity];
-Cesium.knockout
-  .getObservable(viewer.clockViewModel, "shouldAnimate")
-  .subscribe(function (shouldAnimate) {
-    if (shouldAnimate && clock.multiplier >= 100000) {
-      entitiesToDisableLightingFor.forEach(function (entity) {
-        entity.model.lightColor = new Cesium.Color(0, 0, 0);
-      });
-    } else {
-      entitiesToDisableLightingFor.forEach(function (entity) {
-        entity.model.lightColor = new Cesium.Color(1, 1, 1);
-      });
-    }
-  });
+// Removed rover entity lighting code - not needed for this demo

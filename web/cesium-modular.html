@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modular Cesium Vehicle Game</title>
+    <style>
+        html, body, #cesiumContainer {
+            width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+            font-family: "Open Sans", Arial, sans-serif;
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(40, 40, 40, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 1000;
+        }
+        .controls h3 {
+            margin: 0 0 10px 0;
+            color: #48b1ff;
+        }
+        .controls ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .controls li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="cesiumContainer"></div>
+    <div class="controls">
+        <h3>🚗 Modular Vehicle Controls</h3>
+        <ul>
+            <li><strong>W/↑:</strong> Throttle</li>
+            <li><strong>S/↓:</strong> Brake/Reverse</li>
+            <li><strong>A/←:</strong> Turn Left</li>
+            <li><strong>D/→:</strong> Turn Right</li>
+            <li><strong>C:</strong> Switch Camera (Follow/Close Follow)</li>
+            <li><strong>M:</strong> Toggle Rover/Aircraft Mode</li>
+        </ul>
+        <div style="margin-top: 10px;">
+            <strong>🏎️ Close Follow:</strong> Racing game style camera right behind the car!
+        </div>
+    </div>
+    <script type="module" src="./cesium-modular.js"></script>
+</body>
+</html>
