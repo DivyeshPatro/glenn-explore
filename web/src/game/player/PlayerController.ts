@@ -48,7 +48,7 @@ export class PlayerController implements IFollowable {
     private isAnimationPlaying: boolean = false;
     private currentState: PlayerState<ModelConfig> | null = null;
     private _coordinates: [number, number] = [0, 0];
-    private _rotation: { x: number; y: number; z: number } = { x: 0, y: 0, z: 40 };
+    private _rotation: { x: number; y: number; z: number } = { x: 0, y: 0, z: 220 };
     private _elevation: number = 0;
     private animationFrameId: number | null = null;
     private lastUpdateTime: number = 0;

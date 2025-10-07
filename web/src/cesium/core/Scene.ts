@@ -7,7 +7,7 @@ export class Scene {
   public camera: Cesium.Camera;
   public clock: Cesium.Clock;
   public primitives: Cesium.PrimitiveCollection;
-  
+
   private rotationSpeed = Cesium.Math.toRadians(0.1);
   private earthSpinListener: Cesium.Event.RemoveCallback | null = null;
 
@@ -36,12 +36,14 @@ export class Scene {
     this.scene.debugShowFramesPerSecond = true;
 
     // Mars-like atmosphere
-    this.scene.skyAtmosphere.atmosphereMieCoefficient = new Cesium.Cartesian3(9.0e-5, 2.0e-5, 1.0e-5);
-    this.scene.skyAtmosphere.atmosphereRayleighCoefficient = new Cesium.Cartesian3(9.0e-6, 2.0e-6, 1.0e-6);
-    this.scene.skyAtmosphere.atmosphereRayleighScaleHeight = 9000;
-    this.scene.skyAtmosphere.atmosphereMieScaleHeight = 2700.0;
-    this.scene.skyAtmosphere.saturationShift = -0.1;
-    this.scene.skyAtmosphere.perFragmentAtmosphere = true;
+    if (this.scene.skyAtmosphere) {
+      this.scene.skyAtmosphere.atmosphereMieCoefficient = new Cesium.Cartesian3(9.0e-5, 2.0e-5, 1.0e-5);
+      this.scene.skyAtmosphere.atmosphereRayleighCoefficient = new Cesium.Cartesian3(9.0e-6, 2.0e-6, 1.0e-6);
+      this.scene.skyAtmosphere.atmosphereRayleighScaleHeight = 9000;
+      this.scene.skyAtmosphere.atmosphereMieScaleHeight = 2700.0;
+      this.scene.skyAtmosphere.saturationShift = -0.1;
+      this.scene.skyAtmosphere.perFragmentAtmosphere = true;
+    }
   }
 
   private setupPostProcessing(): void {
@@ -75,11 +77,11 @@ export class Scene {
     if (this.earthSpinListener) {
       return; // Already spinning
     }
-    
+
     this.earthSpinListener = this.scene.postRender.addEventListener(() => {
       this.camera.rotateRight(this.rotationSpeed);
     });
-    
+
     console.log('🌍 Earth spinning started - exploring the world...');
   }
 
@@ -95,9 +97,9 @@ export class Scene {
   public async zoomToLocation(position: Cesium.Cartesian3, duration: number = 5000): Promise<void> {
     const phase1Duration = duration - 1000; // Most of the time for approach
     const phase2Duration = 1000; // Last 1 second for final positioning
-    
+
     console.log('📍 Zooming to spawn location...');
-    
+
     // Phase 1: Approach the location without specific orientation
     await new Promise<void>((resolve) => {
       this.camera.flyTo({
@@ -113,12 +115,12 @@ export class Scene {
         }
       });
     });
-    
+
     // Phase 2: Final positioning with specific orientation
     return new Promise((resolve) => {
       const heading = Cesium.Math.toRadians(230.0);
       const pitch = Cesium.Math.toRadians(-15.0);
-      
+
       this.camera.flyTo({
         destination: position,
         orientation: {

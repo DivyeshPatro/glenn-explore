@@ -130,7 +130,7 @@ export class VehiclePhysics {
     };
   }
 
-  private calculateSteering(deltaTime: number, input: PhysicsInput): Pick<PhysicsResult, 'turnRate' | 'frontWheelAngle' | 'steeringReduction'> {
+  private calculateSteering(_deltaTime: number, input: PhysicsInput): Pick<PhysicsResult, 'turnRate' | 'frontWheelAngle' | 'steeringReduction'> {
     if (!this.config.wheelbase || !this.config.maxSteeringAngle) {
       return { turnRate: 0, frontWheelAngle: 0, steeringReduction: 1 };
     }

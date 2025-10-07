@@ -95,9 +95,9 @@ export class CameraController {
     if (settings.pitch !== undefined) {
       PitchController.setPitch(settings.pitch);
     }
-    // if (settings.zoom !== undefined) {
-    //   ZoomController.setZoom(settings.zoom);
-    // }
+    if (settings.zoom !== undefined) {
+      ZoomController.setZoom(settings.zoom);
+    }
   }
 
   public static getMap(): mapboxgl.Map {

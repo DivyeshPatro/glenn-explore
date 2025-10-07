@@ -9,7 +9,7 @@ export const DEFAULT_COORDINATES = {
   lng: 11.979125,
   lat: 57.697530,
   zoom: 20,
-  pitch: 75,
+  pitch: 80,
   bearing: -140.0
 }; 
 

@@ -55,7 +55,7 @@ export abstract class Vehicle implements Updatable {
         })
       );
 
-      this.primitive.readyEvent.addEventListener(() => {
+      this.primitive?.readyEvent.addEventListener(() => {
         this.isReady = true;
         this.onModelReady();
       });

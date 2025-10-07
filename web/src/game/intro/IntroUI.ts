@@ -46,7 +46,7 @@ export class IntroUI {
           </div>
           
           <button class="anonymous-signin-btn">
-            🎭 Continue Anonymously
+            🎭 Play as guest
           </button>
           
           <p class="anonymous-note">
@@ -385,11 +385,11 @@ export class IntroUI {
       if (response) {
         this.state.loginState.isVerified = true;
 
-        if (!response.hasPaid) {
-          this.state.currentStep = 'payment';
-        } else {
+       // if (!response.hasPaid) {
+        //  this.state.currentStep = 'payment';
+        //} else {
           this.state.currentStep = 'instructions';
-        }
+       // }
       }
     } catch (error) {
       console.error('Failed to sign in anonymously:', error);

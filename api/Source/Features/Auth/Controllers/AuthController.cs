@@ -179,7 +179,7 @@ public class AuthController : ControllerBase
 
             // Generate a fun username
             var guestUsername = UsernameGenerator.GenerateUsername();
-
+            var email = $"{guestUsername}@guest.com";
             // Try a few times if the username is taken
             for (int i = 0; i < 5; i++)
             {
@@ -199,12 +199,14 @@ public class AuthController : ControllerBase
                 IsGuest = true,
                 IsActive = true,
                 FirstName = guestUsername,
-                GuestKey = guestKey
+                GuestKey = guestKey,
+                Email = email
             };
 
             var result = await _userManager.CreateAsync(user);
             if (!result.Succeeded)
             {
+                _logger.LogError("Failed to create guest user: {ErrorMessage}", string.Join(", ", result.Errors.Select(e => e.Description)));
                 return BadRequest(new { message = "Failed to create guest user" });
             }
 

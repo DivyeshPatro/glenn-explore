@@ -47,7 +47,7 @@ export class FollowCloseCamera extends Camera {
     }
   }
 
-  public update(deltaTime: number): void {
+  public update(_deltaTime: number): void {
     if (!this.isActive || !this.target || !this.target.isModelReady()) {
       return;
     }
