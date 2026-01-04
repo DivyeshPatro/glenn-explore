@@ -1,4 +1,5 @@
 import { InputUtils } from './InputUtils';
+import { PlayerStore } from './stores/PlayerStore';
 
 /**
  * Class to control camera bearing with arrow keys
@@ -50,9 +51,29 @@ export class BearingController {
       if (InputUtils.isInputElementFocused()) {
         return;
       }
-      
-      if (BearingController.keys.hasOwnProperty(e.key)) {
-        BearingController.keys[e.key] = true;
+
+      const key = e.key.toLowerCase();
+      const bindings = PlayerStore.getKeyBindings();
+
+      // If this key is bound to a movement action, don't use it for camera bearing
+      const isBoundToMovement = Object.values(bindings).includes(key);
+      if (isBoundToMovement) {
+        // If we're using arrows for movement, maybe we want WASD for camera?
+        return;
+      }
+
+      // Handle Arrow Keys (Traditional) or WASD (if Arrows are bound to movement)
+      // We check if any arrow key is bound to movement to decide if WASD should be used as a fallback.
+      const useWasdFallback = Object.values(bindings).includes('arrowup') ||
+        Object.values(bindings).includes('arrowdown') ||
+        Object.values(bindings).includes('arrowleft') ||
+        Object.values(bindings).includes('arrowright');
+
+      if (e.key === 'ArrowLeft' || (useWasdFallback && key === 'a')) {
+        BearingController.keys.ArrowLeft = true;
+        BearingController.updateBearing();
+      } else if (e.key === 'ArrowRight' || (useWasdFallback && key === 'd')) {
+        BearingController.keys.ArrowRight = true;
         BearingController.updateBearing();
       }
     });
@@ -63,9 +84,13 @@ export class BearingController {
       if (InputUtils.isInputElementFocused()) {
         return;
       }
-      
-      if (BearingController.keys.hasOwnProperty(e.key)) {
-        BearingController.keys[e.key] = false;
+
+      const key = e.key.toLowerCase();
+      if (key === 'arrowleft' || key === 'a') {
+        BearingController.keys.ArrowLeft = false;
+      }
+      if (key === 'arrowright' || key === 'd') {
+        BearingController.keys.ArrowRight = false;
       }
     });
   }

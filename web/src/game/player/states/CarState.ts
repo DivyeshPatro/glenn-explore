@@ -61,7 +61,7 @@ export class CarState implements PlayerState<CarModelConfig> {
 
     async enter(player: PlayerController): Promise<void> {
         this.controller = player;
-        
+
         // Check if flying mode should be enabled based on saved state
         if (PlayerStore.getCarMode() === 'fly' && !PlayerStore.isPlayerFlying()) {
             // Restore flying mode if it was enabled
@@ -115,7 +115,7 @@ export class CarState implements PlayerState<CarModelConfig> {
         const { physics } = this.modelConfig;
 
         // Check for space key press when not flying
-        if (this.controller?.getKeyState('space') && !PlayerStore.isPlayerFlying()) {
+        if (this.controller?.getKeyState('jump') && !PlayerStore.isPlayerFlying()) {
             const currentTime = Date.now();
             if (currentTime - this.lastSpaceMessageTime >= this.SPACE_MESSAGE_COOLDOWN) {
                 Toast.show({
@@ -172,20 +172,20 @@ export class CarState implements PlayerState<CarModelConfig> {
     private handleDriving(physics: CarPhysics): void {
         // Simplified driving physics with fixed timestep
         let animationName: string | undefined = this.modelConfig.drivingAnimation?.drivingAnimation;
-        
+
         // Check for boost (shift key)
-        const isBoost = this.controller?.getKeyState('shift');
+        const isBoost = this.controller?.getKeyState('run');
         const boostMultiplier = isBoost ? 4 : 1;
-        
+
         // Check for braking - disable cruise control if braking
-        const isBraking = this.controller?.getKeyState('s');
+        const isBraking = this.controller?.getKeyState('backward');
         if (isBraking && this.cruiseControlActive) {
             this.disableCruiseControl();
         }
-        
+
         // Check for acceleration input during cruise control
-        const isAccelerating = this.controller?.getKeyState('w');
-        
+        const isAccelerating = this.controller?.getKeyState('forward');
+
         // Handle cruise control logic
         if (this.cruiseControlActive && !isBraking) {
             // If W is pressed during cruise control, incrementally increase target speed
@@ -198,7 +198,7 @@ export class CarState implements PlayerState<CarModelConfig> {
                     physics.maxSpeed * boostMultiplier * 1000 // Convert max speed to km/h and apply boost
                 );
             }
-            
+
             this.maintainCruiseSpeed(physics, boostMultiplier);
             this.animationState = 'driving';
         } else {
@@ -250,9 +250,9 @@ export class CarState implements PlayerState<CarModelConfig> {
         // Increased base turning responsiveness
         const baseTurnMultiplier = 1.5;
 
-        if (this.controller?.getKeyState('a')) {
+        if (this.controller?.getKeyState('left')) {
             this.steeringAngle = physics.turnSpeed * baseTurnMultiplier * (this.velocity >= 0 ? 1 : -1);
-        } else if (this.controller?.getKeyState('d')) {
+        } else if (this.controller?.getKeyState('right')) {
             this.steeringAngle = -physics.turnSpeed * baseTurnMultiplier * (this.velocity >= 0 ? 1 : -1);
         } else {
             this.steeringAngle = 0;
@@ -294,7 +294,7 @@ export class CarState implements PlayerState<CarModelConfig> {
         }
 
         this.verticalPosition = this.currentElevation
-        
+
         // Set coordinates
         this.model.setCoords([
             coords[0],
@@ -344,7 +344,7 @@ export class CarState implements PlayerState<CarModelConfig> {
         const targetSpeed = Math.max(currentDisplaySpeed, this.MIN_CRUISE_SPEED_KMH);
         this.cruiseControlTargetSpeed = targetSpeed;
         this.cruiseControlActive = true;
-        
+
         // If current speed is too low, accelerate to minimum speed
         if (currentDisplaySpeed < this.MIN_CRUISE_SPEED_KMH) {
             // Convert km/h back to velocity units for the physics
@@ -359,7 +359,7 @@ export class CarState implements PlayerState<CarModelConfig> {
 
     public adjustCruiseSpeed(deltaKmh: number): void {
         if (!this.cruiseControlActive) return;
-        
+
         this.cruiseControlTargetSpeed = Math.max(
             this.MIN_CRUISE_SPEED_KMH,
             this.cruiseControlTargetSpeed + deltaKmh
@@ -378,12 +378,12 @@ export class CarState implements PlayerState<CarModelConfig> {
         const targetVelocity = this.cruiseControlTargetSpeed / 1000; // Convert km/h to velocity units
         const currentVelocity = this.velocity;
         const velocityDifference = targetVelocity - currentVelocity;
-        
+
         // Apply smooth adjustment to reach target speed
         if (Math.abs(velocityDifference) > 0.001) {
             const adjustment = velocityDifference * this.CRUISE_CONTROL_SMOOTHING * physics.acceleration;
             this.velocity += adjustment;
-            
+
             // Apply boost multiplier if shift is held during cruise control
             if (boostMultiplier > 1) {
                 this.velocity = Math.min(this.velocity, physics.maxSpeed * boostMultiplier);

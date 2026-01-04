@@ -343,6 +343,31 @@ export class PlayerStore {
         PlayerStore.stateType = stateType;
     }
 
+    public static getKeyBindings(): Record<string, string> {
+        const savedBindings = localStorage.getItem('keyBindings');
+        if (savedBindings) {
+            return JSON.parse(savedBindings);
+        }
+        return {
+            forward: 'w',
+            backward: 's',
+            left: 'a',
+            right: 'd',
+            run: 'shift',
+            jump: ' ',
+            cruise: 'c'
+        };
+    }
+
+    public static setKeyBinding(action: string, key: string): void {
+        const bindings = PlayerStore.getKeyBindings();
+        bindings[action] = key.toLowerCase();
+        localStorage.setItem('keyBindings', JSON.stringify(bindings));
+        window.dispatchEvent(new CustomEvent('settings:keybindings_changed', {
+            detail: { action, key }
+        }));
+    }
+
     public static setLockZoom(lockZoom: boolean): void {
         PlayerStore.lockZoom = lockZoom;
     }

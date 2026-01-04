@@ -54,12 +54,12 @@ export class PlayerController implements IFollowable {
     private lastUpdateTime: number = 0;
     private ui: PlayerUI | null = null;
     private keyStates: Record<string, boolean> = {
-        w: false,    // Forward
-        a: false,    // Left
-        s: false,    // Backward
-        d: false,    // Right
-        shift: false, // Run (walking state)
-        space: false  // Jump (walking state) / Fly up (flying mode)
+        forward: false,
+        backward: false,
+        left: false,
+        right: false,
+        run: false,
+        jump: false
     };
     private tb: Threebox | null = null;
     private map: mapboxgl.Map | null = null;
@@ -69,7 +69,7 @@ export class PlayerController implements IFollowable {
     private lastZoom: number = 0;
     private lastLng: number = 0;
     private lastLat: number = 0;
-    
+
     // MinecraftWalking camera throttling for better performance 🎥
     private lastMinecraftCameraUpdate: number = 0;
     private minecraftCameraInterval: number = 1000; // Update every 1 second for Bob!
@@ -327,7 +327,7 @@ export class PlayerController implements IFollowable {
         // 🔄 IMMEDIATE ROTATION UPDATES (responsive feel!)
         const bearingDiff = Math.abs(bearing - this.lastBearing);
         const pitchDiff = Math.abs(pitch - this.lastPitch);
-        
+
         // When Bob turns his head, camera follows instantly! No lag on controls!
         // if (bearingDiff > 20 || pitchDiff > 10) {
         //     // Instant rotation for responsive controls
@@ -351,7 +351,7 @@ export class PlayerController implements IFollowable {
         if (currentTime - this.lastMinecraftCameraUpdate >= this.minecraftCameraInterval) {
             const positionDiff = Math.abs(lng - this.lastLng) + Math.abs(lat - this.lastLat);
             const zoomDiff = Math.abs(zoom - this.lastZoom);
-            
+
             // Smooth camera movement when Bob walks around
             if (positionDiff > 0.00111 || zoomDiff > 0.5) {
                 CameraController.getMap().easeTo({
@@ -362,12 +362,12 @@ export class PlayerController implements IFollowable {
                     pitch: pitch,
                     bearing: bearing
                 });
-                
+
                 this.lastLng = lng;
                 this.lastLat = lat;
                 this.lastZoom = zoom;
             }
-            
+
             this.lastMinecraftCameraUpdate = currentTime;
         }
     }
@@ -602,15 +602,16 @@ export class PlayerController implements IFollowable {
         }
 
         const key = e.key.toLowerCase();
+        const bindings = PlayerStore.getKeyBindings();
 
-        // Handle cruise control toggle (C key) - desktop only
-        if (key === 'c' && DeviceDetection.isDesktop()) {
+        // Handle cruise control toggle - desktop only
+        if (key === bindings.cruise && DeviceDetection.isDesktop()) {
             // Only allow cruise control in car mode
             if (this.currentState instanceof CarState) {
                 this.currentState.toggleCruiseControl();
                 const isActive = this.currentState.isCruiseControlActive();
                 const targetSpeed = this.currentState.getCruiseControlTargetSpeed();
-                
+
                 if (isActive) {
                     this.showMessage(`Cruise Control ON (${Math.round(targetSpeed)} km/h)`, 2000);
                 } else {
@@ -622,19 +623,14 @@ export class PlayerController implements IFollowable {
             return;
         }
 
-        // Check if this is a key we're tracking
-        if (key in this.keyStates) {
-            this.setKeyState(key, true);
-            
-            // Track shift key press for quest
-            if (key === 'shift') {
-                trackQuestEvent('VEHICLE_ACCELERATE');
-            }
-        } else if (key === ' ') {
-            // Handle space bar specifically
-            this.setKeyState('space', true);
-
-            if (PlayerStore.isPlayerFlying()) {
+        // Map key to action
+        for (const [action, boundKey] of Object.entries(bindings)) {
+            if (key === boundKey) {
+                this.setKeyState(action, true);
+                if (action === 'run') {
+                    trackQuestEvent('VEHICLE_ACCELERATE');
+                }
+                break;
             }
         }
     };
@@ -645,15 +641,13 @@ export class PlayerController implements IFollowable {
         }
 
         const key = e.key.toLowerCase();
+        const bindings = PlayerStore.getKeyBindings();
 
-        // Check if this is a key we're tracking
-        if (key in this.keyStates) {
-            this.setKeyState(key, false);
-        } else if (key === ' ') {
-            // Handle space bar specifically
-            this.setKeyState('space', false);
-
-            if (PlayerStore.isPlayerFlying()) {
+        // Map key to action
+        for (const [action, boundKey] of Object.entries(bindings)) {
+            if (key === boundKey) {
+                this.setKeyState(action, false);
+                break;
             }
         }
     };
@@ -679,7 +673,7 @@ export class PlayerController implements IFollowable {
         if (!(this.currentState instanceof CarState)) {
             return null;
         }
-        
+
         return {
             active: this.currentState.isCruiseControlActive(),
             targetSpeed: this.currentState.getCruiseControlTargetSpeed()
