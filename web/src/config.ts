@@ -11,6 +11,6 @@ export const DEFAULT_COORDINATES = {
   zoom: 20,
   pitch: 80,
   bearing: -140.0
-}; 
+};
 
 export const PAYWALL = false

@@ -212,8 +212,8 @@ export class MovementControlsPanel {
 
           // Apply steering
           if (normalizedDelta < -0.2) {
-            this.setKeyState('a', true);
-            this.setKeyState('d', false);
+            this.setKeyState('left', true);
+            this.setKeyState('right', false);
 
             // Update visual indicator
             if (indicator) {
@@ -221,8 +221,8 @@ export class MovementControlsPanel {
               indicator.classList.remove('right-active');
             }
           } else if (normalizedDelta > 0.2) {
-            this.setKeyState('d', true);
-            this.setKeyState('a', false);
+            this.setKeyState('right', true);
+            this.setKeyState('left', false);
 
             // Update visual indicator
             if (indicator) {
@@ -231,8 +231,8 @@ export class MovementControlsPanel {
             }
           } else {
             // Neutral position - no steering
-            this.setKeyState('a', false);
-            this.setKeyState('d', false);
+            this.setKeyState('left', false);
+            this.setKeyState('right', false);
 
             // Update visual indicator
             if (indicator) {
@@ -256,8 +256,8 @@ export class MovementControlsPanel {
           // Apply acceleration/braking
           if (normalizedDelta > 0.2) {
             // Forward
-            this.setKeyState('w', true);
-            this.setKeyState('s', false);
+            this.setKeyState('forward', true);
+            this.setKeyState('backward', false);
 
             // Update visual indicator
             if (indicator) {
@@ -266,8 +266,8 @@ export class MovementControlsPanel {
             }
           } else if (normalizedDelta < -0.2) {
             // Backward
-            this.setKeyState('s', true);
-            this.setKeyState('w', false);
+            this.setKeyState('backward', true);
+            this.setKeyState('forward', false);
 
             // Update visual indicator
             if (indicator) {
@@ -276,8 +276,8 @@ export class MovementControlsPanel {
             }
           } else {
             // Neutral position - no acceleration
-            this.setKeyState('w', false);
-            this.setKeyState('s', false);
+            this.setKeyState('forward', false);
+            this.setKeyState('backward', false);
 
             // Update visual indicator
             if (indicator) {
@@ -319,12 +319,12 @@ export class MovementControlsPanel {
         // Reset controls based on the side
         if (touchData.controlSide === 'left') {
           // Reset steering
-          this.setKeyState('a', false);
-          this.setKeyState('d', false);
+          this.setKeyState('left', false);
+          this.setKeyState('right', false);
         } else {
           // Reset acceleration
-          this.setKeyState('w', false);
-          this.setKeyState('s', false);
+          this.setKeyState('forward', false);
+          this.setKeyState('backward', false);
         }
 
         // Reset the indicator

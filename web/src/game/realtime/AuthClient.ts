@@ -36,6 +36,12 @@ export class AuthClient {
     });
 
     if (!response.ok) {
+      if ((response.status === 401 || response.status === 400) && (guestId || guestKey)) {
+        localStorage.removeItem(this.GUEST_KEY_STORAGE);
+        localStorage.removeItem(this.GUEST_ID_STORAGE);
+        console.warn('Guest credentials rejected by server during OTP request, clearing and retrying...');
+        return this.requestOtp(email);
+      }
       throw new Error(`Failed to request OTP: ${response.statusText}`);
     }
 
@@ -105,7 +111,7 @@ export class AuthClient {
       localStorage.setItem(this.GUEST_ID_STORAGE, guestId);
     }
 
-    const request: CreateGuestRequest = { 
+    const request: CreateGuestRequest = {
       guestId,
       guestKey: existingGuestKey || undefined
     };
@@ -120,11 +126,12 @@ export class AuthClient {
     });
 
     if (!response.ok) {
-      // If unauthorized and we had a key, credentials are invalid
+      // If unauthorized (401) or bad request (400) and we had a key, credentials might be invalid or claimed
       // Clear them and generate fresh ones
-      if (response.status === 401 && existingGuestKey) {
+      if ((response.status === 401 || response.status === 400) && (existingGuestKey || guestId)) {
         localStorage.removeItem(this.GUEST_KEY_STORAGE);
         localStorage.removeItem(this.GUEST_ID_STORAGE);
+        console.warn('Guest credentials rejected by server, clearing and retrying...');
         // Retry with fresh credentials
         return this.signInAnonymously();
       }
@@ -140,7 +147,7 @@ export class AuthClient {
 
     PlayerStore.setPlayerName(loginResponse.username);
     PlayerStore.setIsGuest(loginResponse.isGuest);
-    
+
     return loginResponse;
   }
 

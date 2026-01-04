@@ -27,7 +27,7 @@ export class WalkingState implements PlayerState<PlayerModelConfig> {
     private isJumping: boolean = false;
     private verticalVelocity: number = 0;
     verticalPosition: number = 0;
-    
+
     // Movement physics
     private velocity: number = 0;
     private controller?: PlayerController;
@@ -73,7 +73,7 @@ export class WalkingState implements PlayerState<PlayerModelConfig> {
         // Use config values
         const { physics, walkingAnimation: animation } = this.modelConfig;
 
-        if (this.controller?.getKeyState('space') && !this.isJumping) {
+        if (this.controller?.getKeyState('jump') && !this.isJumping) {
             this.isJumping = true;
             this.verticalVelocity = physics.jumpForce;
             this.verticalPosition = groundElevation;
@@ -93,8 +93,8 @@ export class WalkingState implements PlayerState<PlayerModelConfig> {
         }
 
         let rotation = player.rotation.z;
-        if (this.controller?.getKeyState('a') || this.controller?.getKeyState('d')) {
-            const rotationDelta = physics.rotationSpeed * (this.controller.getKeyState('a') ? 1 : -1) * (deltaTime / this.TIME_STEP);
+        if (this.controller?.getKeyState('left') || this.controller?.getKeyState('right')) {
+            const rotationDelta = physics.rotationSpeed * (this.controller.getKeyState('left') ? 1 : -1) * (deltaTime / this.TIME_STEP);
             rotation = (rotation + rotationDelta) % 360;
 
             if (this.model) {
@@ -111,16 +111,16 @@ export class WalkingState implements PlayerState<PlayerModelConfig> {
             });
         }
 
-        const isRunning = this.controller?.getKeyState('shift');
+        const isRunning = this.controller?.getKeyState('run');
         const maxVelocity = isRunning ? physics.runMaxVelocity : physics.walkMaxVelocity;
         const acceleration = isRunning ? physics.runAcceleration : physics.walkAcceleration;
 
-        if (this.controller?.getKeyState('w')) {
+        if (this.controller?.getKeyState('forward')) {
             this.velocity = Math.min(
                 this.velocity + acceleration * (deltaTime / this.TIME_STEP),
                 maxVelocity
             );
-        } else if (this.controller?.getKeyState('s')) {
+        } else if (this.controller?.getKeyState('backward')) {
             this.velocity = Math.max(
                 this.velocity - physics.walkAcceleration * (deltaTime / this.TIME_STEP),
                 -physics.walkMaxVelocity * 0.5
@@ -135,8 +135,8 @@ export class WalkingState implements PlayerState<PlayerModelConfig> {
 
         let animationName = animation?.idleAnimation;
 
-        if ((this.controller?.getKeyState('w') || this.controller?.getKeyState('s') || 
-             this.controller?.getKeyState('a') || this.controller?.getKeyState('d')) && !this.isJumping) {
+        if ((this.controller?.getKeyState('forward') || this.controller?.getKeyState('backward') ||
+            this.controller?.getKeyState('left') || this.controller?.getKeyState('right')) && !this.isJumping) {
             animationName = isRunning ? animation?.runAnimation : animation?.walkAnimation;
         }
 

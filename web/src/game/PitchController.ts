@@ -1,5 +1,6 @@
 import { InputUtils } from './InputUtils';
 import { trackQuestEvent } from './quests/engine/trackQuestEvent';
+import { PlayerStore } from './stores/PlayerStore';
 
 /**
  * Class to control camera pitch with arrow keys
@@ -44,9 +45,26 @@ export class PitchController {
     // Track key down events
     document.addEventListener('keydown', (e) => {
       if (InputUtils.isInputElementFocused()) return;
-      
-      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        PitchController.keys[e.key] = true;
+
+      const key = e.key.toLowerCase();
+      const bindings = PlayerStore.getKeyBindings();
+
+      // If this key is bound to a movement action, don't use it for camera pitch
+      const isBoundToMovement = Object.values(bindings).includes(key);
+      if (isBoundToMovement) return;
+
+      // Handle Arrow Keys (Traditional) or WASD (if Arrows are bound to movement)
+      const useWasdFallback = Object.values(bindings).includes('arrowup') ||
+        Object.values(bindings).includes('arrowdown') ||
+        Object.values(bindings).includes('arrowleft') ||
+        Object.values(bindings).includes('arrowright');
+
+      if (e.key === 'ArrowUp' || (useWasdFallback && key === 'w')) {
+        PitchController.keys.ArrowUp = true;
+        PitchController.updatePitch();
+        trackQuestEvent('MAP_PITCH_CHANGE');
+      } else if (e.key === 'ArrowDown' || (useWasdFallback && key === 's')) {
+        PitchController.keys.ArrowDown = true;
         PitchController.updatePitch();
         trackQuestEvent('MAP_PITCH_CHANGE');
       }
@@ -58,10 +76,10 @@ export class PitchController {
       if (InputUtils.isInputElementFocused()) {
         return;
       }
-      
-      if (PitchController.keys.hasOwnProperty(e.key)) {
-        PitchController.keys[e.key] = false;
-      }
+
+      const key = e.key.toLowerCase();
+      if (key === 'arrowup' || key === 'w') PitchController.keys.ArrowUp = false;
+      if (key === 'arrowdown' || key === 's') PitchController.keys.ArrowDown = false;
     });
   }
 
