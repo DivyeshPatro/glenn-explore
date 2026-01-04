@@ -26,6 +26,7 @@ export abstract class Vehicle implements Updatable {
   protected velocity: number = 0;
   protected speed: number = 0;
   protected isReady: boolean = false;
+  protected sceneRef: Cesium.Scene | null = null;
 
   public readonly id: string;
   public readonly config: VehicleConfig;
@@ -43,6 +44,7 @@ export abstract class Vehicle implements Updatable {
 
   public async initialize(scene: Cesium.Scene): Promise<void> {
     try {
+      this.sceneRef = scene;
       this.primitive = scene.primitives.add(
         await Cesium.Model.fromGltfAsync({
           url: this.config.modelUrl,
@@ -117,8 +119,13 @@ export abstract class Vehicle implements Updatable {
 
   public destroy(): void {
     if (this.primitive) {
-      // Note: In real implementation, we'd need reference to scene to remove primitive
+      if (this.sceneRef) {
+        try {
+          this.sceneRef.primitives.remove(this.primitive);
+        } catch {}
+      }
       this.primitive = null;
+      this.isReady = false;
     }
   }
 }

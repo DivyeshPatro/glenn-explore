@@ -127,9 +127,18 @@ public partial class Program
             options.PayloadSerializerOptions.WriteIndented = true;
         });
 
-        // Add logging configuration
-        builder.Logging.AddFilter("Microsoft.AspNetCore.SignalR", LogLevel.Debug);
-        builder.Logging.AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Debug);
+        // Add logging configuration - only enable debug in development
+        if (builder.Environment.IsDevelopment())
+        {
+            builder.Logging.AddFilter("Microsoft.AspNetCore.SignalR", LogLevel.Debug);
+            builder.Logging.AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Debug);
+        }
+        else
+        {
+            // In production, only log warnings and errors for SignalR to avoid massive log files
+            builder.Logging.AddFilter("Microsoft.AspNetCore.SignalR", LogLevel.Warning);
+            builder.Logging.AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Warning);
+        }
 
         // Add game services
         builder.Services.Configure<GameOptions>(
@@ -431,11 +440,18 @@ public partial class Program
         app.UseStaticFiles();
 
         // Configure static file serving for uploads directory
+        // Use same path logic as FileService for consistency
+        var uploadsBasePath = app.Environment.IsDevelopment()
+            ? Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "uploads"))
+            : Path.Combine(Environment.GetEnvironmentVariable("DEPLOY_PATH") ?? "", "data", "uploads");
+
+        // Ensure uploads directory exists (in case it was deleted)
+        Directory.CreateDirectory(uploadsBasePath);
+        Directory.CreateDirectory(Path.Combine(uploadsBasePath, "files"));
+
         app.UseStaticFiles(new StaticFileOptions
         {
-            FileProvider = new PhysicalFileProvider(
-                Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", "uploads"))
-            ),
+            FileProvider = new PhysicalFileProvider(uploadsBasePath),
             RequestPath = "/uploads",
             ServeUnknownFileTypes = true,
             DefaultContentType = "application/octet-stream",

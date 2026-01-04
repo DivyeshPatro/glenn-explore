@@ -1,6 +1,7 @@
 import { startCesiumVehicleGame } from './src/cesium/bootstrap/main';
 import './cesium.css';
 
+console.log('🎮 Modular Cesium Vehicle Game is starting...');
 // Start the modular Cesium vehicle game
 startCesiumVehicleGame().then(game => {
   console.log('🎮 Modular Cesium Vehicle Game is ready!');

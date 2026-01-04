@@ -17,6 +17,11 @@ export class FollowCamera extends Camera {
   private lastHeading: number = 0;
   private lastPitch: number = 0;
   
+  // Dynamic FOV - DRAMATIC!
+  private readonly baseFOV: number = Cesium.Math.toRadians(60); // 60 degrees base
+  private readonly maxFOV: number = Cesium.Math.toRadians(100); // 100 degrees at high speed (VERY WIDE!)
+  private currentFOV: number = this.baseFOV;
+  
   // Camera constants
   private readonly cameraLerpFactor: number = 0.04;
   private readonly bankingFactor: number = 2;
@@ -63,7 +68,15 @@ export class FollowCamera extends Camera {
     // Update camera targets with smooth following - position camera behind vehicle
     this.targetCameraHeading = state.heading + Math.PI/2; // 180 degrees behind vehicle
     this.targetCameraPitch = state.pitch - Cesium.Math.toRadians(10); // Look over vehicle
-    this.targetCameraRoll = -headingDelta * this.bankingFactor * 0.3; // Reduced banking
+    
+    // For aircraft with roll, use the actual roll; otherwise use turn-based banking
+    if (state.roll !== undefined && Math.abs(state.roll) > 0.01) {
+      // Aircraft: use 50% of actual roll for smooth banking
+      this.targetCameraRoll = state.roll * 0.5;
+    } else {
+      // Ground vehicle: use turn-induced banking
+      this.targetCameraRoll = -headingDelta * this.bankingFactor * 0.3;
+    }
 
     // Smooth interpolation for cinematic movement
     this.currentCameraHeading = this.lerpAngle(this.currentCameraHeading, this.targetCameraHeading, this.cameraLerpFactor);
@@ -77,16 +90,36 @@ export class FollowCamera extends Camera {
 
     this.cesiumCamera.lookAt(center, this.hpRange);
 
-    // Apply subtle banking
+    // Apply smooth banking
     const rollDifference = this.currentCameraRoll - this.appliedCameraRoll;
     if (Math.abs(rollDifference) > 0.001) {
       this.cesiumCamera.twistRight(rollDifference);
       this.appliedCameraRoll = this.currentCameraRoll;
     }
 
+    // Dynamic FOV based on speed
+    this.updateDynamicFOV(state.speed);
+
     // Store current values for next frame
     this.lastHeading = state.heading;
     this.lastPitch = state.pitch;
+  }
+
+  private updateDynamicFOV(speed: number): void {
+    // Speed ranges: 0-120 units
+    // Map speed to FOV increase - MORE AGGRESSIVE!
+    const speedFactor = Math.min(speed / 80, 1.0); // Kicks in earlier (80 instead of 100)
+    // Use squared factor for more dramatic ramp-up
+    const dramaticFactor = speedFactor * speedFactor;
+    const targetFOV = Cesium.Math.lerp(this.baseFOV, this.maxFOV, dramaticFactor);
+    
+    // Faster FOV transition for immediate impact
+    this.currentFOV = Cesium.Math.lerp(this.currentFOV, targetFOV, 0.08);
+    
+    // Apply to camera (if it's a perspective frustum)
+    if (this.cesiumCamera.frustum instanceof Cesium.PerspectiveFrustum) {
+      this.cesiumCamera.frustum.fov = this.currentFOV;
+    }
   }
 
   private lerpAngle(start: number, end: number, factor: number): number {

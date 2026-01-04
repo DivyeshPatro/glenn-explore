@@ -12,6 +12,9 @@ export class Scene {
   private earthSpinListener: Cesium.Event.RemoveCallback | null = null;
 
   constructor(containerId: string) {
+    // Set your Cesium Ion access token here
+    Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIxNzE4ZDZhMi05NjMwLTQwYzgtOTAxNC0xMzQ2MjZmYzc1OTYiLCJpZCI6MzExNTg2LCJpYXQiOjE3NDk3MjE3MzB9.xTOm8P4-3Ba2eIrnWLYbAPs3q_5c1HPxdfWHPQBz_2I';
+    
     this.viewer = new Cesium.Viewer(containerId, {
       timeline: false,
       animation: false,
@@ -37,12 +40,12 @@ export class Scene {
 
     // Mars-like atmosphere
     if (this.scene.skyAtmosphere) {
-      this.scene.skyAtmosphere.atmosphereMieCoefficient = new Cesium.Cartesian3(9.0e-5, 2.0e-5, 1.0e-5);
-      this.scene.skyAtmosphere.atmosphereRayleighCoefficient = new Cesium.Cartesian3(9.0e-6, 2.0e-6, 1.0e-6);
-      this.scene.skyAtmosphere.atmosphereRayleighScaleHeight = 9000;
-      this.scene.skyAtmosphere.atmosphereMieScaleHeight = 2700.0;
-      this.scene.skyAtmosphere.saturationShift = -0.1;
-      this.scene.skyAtmosphere.perFragmentAtmosphere = true;
+      // this.scene.skyAtmosphere.atmosphereMieCoefficient = new Cesium.Cartesian3(9.0e-5, 2.0e-5, 1.0e-5);
+      // this.scene.skyAtmosphere.atmosphereRayleighCoefficient = new Cesium.Cartesian3(9.0e-6, 2.0e-6, 1.0e-6);
+      // this.scene.skyAtmosphere.atmosphereRayleighScaleHeight = 9000;
+      // this.scene.skyAtmosphere.atmosphereMieScaleHeight = 2700.0;
+      // this.scene.skyAtmosphere.saturationShift = -0.1;
+      // this.scene.skyAtmosphere.perFragmentAtmosphere = true;
     }
   }
 

@@ -25,26 +25,35 @@ export interface InputState {
   toggleRoverMode: boolean;
   switchCamera: boolean;
   toggleCollision: boolean;
+
+  // Aircraft specific
+  altitudeUp: boolean;
+  altitudeDown: boolean;
+
+  // System
+  restart: boolean;
 }
 
 export type InputAction = keyof InputState;
 
 export class InputManager {
   private keyBindings: KeyBinding = {
-    // Vehicle controls
+    // Vehicle controls (WASD)
     'KeyW': 'throttle',
-    'ArrowUp': 'throttle',
     'KeyS': 'brake',
-    'ArrowDown': 'brake',
     'KeyA': 'turnLeft',
-    'ArrowLeft': 'turnLeft',
     'KeyD': 'turnRight',
+    
+    // Arrow keys: altitude for aircraft, turning for both
+    'ArrowUp': 'altitudeUp',
+    'ArrowDown': 'altitudeDown',
+    'ArrowLeft': 'turnLeft',
     'ArrowRight': 'turnRight',
     
-    // Camera controls (when camera mode is active)
-    'KeyQ': 'cameraRotateLeft',
-    'KeyE': 'cameraRotateRight',
-    'KeyR': 'cameraUp',
+    // Roll controls for aircraft (Q/E)
+    'KeyQ': 'rollLeft',
+    'KeyE': 'rollRight',
+    // R is repurposed for restart; keep F available if needed later
     'KeyF': 'cameraDown',
     'KeyT': 'cameraCloser',
     'KeyG': 'cameraFarther',
@@ -52,7 +61,14 @@ export class InputManager {
     // Mode toggles
     'KeyM': 'toggleRoverMode',
     'KeyC': 'switchCamera',
-    'KeyB': 'toggleCollision'
+    'KeyB': 'toggleCollision',
+
+    // Alternative altitude controls (for those who prefer PageUp/PageDown)
+    'PageUp': 'altitudeUp',
+    'PageDown': 'altitudeDown',
+
+    // Restart
+    'KeyR': 'restart'
   };
 
   private inputState: InputState = {
@@ -72,11 +88,14 @@ export class InputManager {
     cameraFarther: false,
     toggleRoverMode: false,
     switchCamera: false,
-    toggleCollision: false
+    toggleCollision: false,
+    altitudeUp: false,
+    altitudeDown: false,
+    restart: false
   };
 
   private listeners: Map<InputAction, Array<(pressed: boolean) => void>> = new Map();
-  private oneTimeActions: Set<InputAction> = new Set(['toggleRoverMode', 'switchCamera', 'toggleCollision']);
+  private oneTimeActions: Set<InputAction> = new Set(['toggleRoverMode', 'switchCamera', 'toggleCollision', 'restart']);
 
   constructor() {
     this.setupEventListeners();
@@ -93,6 +112,11 @@ export class InputManager {
   private handleKeyDown(event: KeyboardEvent): void {
     const action = this.keyBindings[event.code] as InputAction;
     if (!action) return;
+
+    // Prevent default browser behavior for game controls
+    if (event.code === 'PageUp' || event.code === 'PageDown' || event.code.startsWith('Arrow')) {
+      event.preventDefault();
+    }
 
     // For one-time actions, only trigger on initial press
     if (this.oneTimeActions.has(action)) {
