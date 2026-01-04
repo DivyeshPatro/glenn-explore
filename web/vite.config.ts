@@ -39,14 +39,12 @@ export default defineConfig({
     server: {
         proxy: {
             '/api': {
-                target: 'http://0.0.0.0:5001',
-                //target: 'https://api.playglenn.com',
+                target: 'https://api.playglenn.com',
                 ws: true,
                 changeOrigin: true,
             },
             '/uploads': {
-                target: 'http://0.0.0.0:5001',
-                //target: 'https://api.playglenn.com',
+                target: 'https://api.playglenn.com',
                 changeOrigin: true,
             },
         }

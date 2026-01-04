@@ -290,4 +290,55 @@
 
 .model-settings .control-btn:active {
     transform: translateY(1px);
-} 
+}
+
+/* Keyboard Controls */
+.key-bindings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.key-binding-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.key-binding-label {
+  font-size: 13px;
+  color: #ccc;
+  text-transform: capitalize;
+}
+
+.key-cap {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  min-width: 60px;
+  padding: 4px 8px;
+  text-align: center;
+  font-family: monospace;
+  font-size: 14px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.key-cap:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.key-cap.recording {
+  background: rgba(59, 130, 246, 0.5);
+  border-color: #3b82f6;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}

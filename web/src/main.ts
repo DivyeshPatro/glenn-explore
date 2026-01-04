@@ -144,7 +144,7 @@ function initializeGame(
     boxZoom: false,
     dragRotate: false,
     dragPan: false, // Enable for MacOS touchpad support
-    keyboard: true,
+    keyboard: false,
     doubleClickZoom: false,
     touchZoomRotate: false,
     touchPitch: false,
@@ -163,29 +163,29 @@ function initializeGame(
 
 
     if (!window.isLowPerformanceDevice) {
-      try{
+      try {
 
-      
-      map?.addSource('mapbox-dem', {
-        'type': 'raster-dem',
-        'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
-        'tileSize': 512,
-        'maxzoom': 18,  // Reduced from 14 to improve performance
-        'minzoom': 3    // Add minzoom to prevent loading terrain data when zoomed out
-      });
 
-      map?.setTerrain({
-        'source': 'mapbox-dem',
-        'exaggeration': PlayerStore.getTerrainExaggeration(),
-      });
+        map?.addSource('mapbox-dem', {
+          'type': 'raster-dem',
+          'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
+          'tileSize': 512,
+          'maxzoom': 18,  // Reduced from 14 to improve performance
+          'minzoom': 3    // Add minzoom to prevent loading terrain data when zoomed out
+        });
 
-      // Listen for terrain exaggeration changes
-      window.addEventListener('terrain:exaggeration_changed', ((event: CustomEvent) => {
         map?.setTerrain({
           'source': 'mapbox-dem',
-          'exaggeration': event.detail.value,
+          'exaggeration': PlayerStore.getTerrainExaggeration(),
         });
-      }) as EventListener);
+
+        // Listen for terrain exaggeration changes
+        window.addEventListener('terrain:exaggeration_changed', ((event: CustomEvent) => {
+          map?.setTerrain({
+            'source': 'mapbox-dem',
+            'exaggeration': event.detail.value,
+          });
+        }) as EventListener);
       } catch (error) {
         console.error('Failed to add terrain:', error);
       }
@@ -241,7 +241,7 @@ function initializeGame(
         realtimeController.connect(map, window.tb!).then(async () => {
           // Initialize player state at the provided position
           player.initializeState(window.tb!, map!, initialPosition);
-          
+
           // Fetch unlocked models from the server
           try {
             const unlockedModels = await modelClient.getUnlockedModels();
@@ -249,7 +249,7 @@ function initializeGame(
           } catch (error) {
             console.error('Failed to fetch unlocked models:', error);
           }
-          
+
           // TODO: Uncomment this when we want to show the donation popover
           // setTimeout(() => {
           //   DonationPopover.showFirst(() => {
@@ -258,9 +258,9 @@ function initializeGame(
           // }, 1000);
 
           setTimeout(() => {
-              window.showModelSelector();
+            window.showModelSelector();
           }, 1000);
-          
+
           Toast.show({
             type: 'success',
             message: 'Welcome to Gothenburg! Enjoy your drive!',

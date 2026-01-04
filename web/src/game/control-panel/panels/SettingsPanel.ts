@@ -167,6 +167,29 @@ export class SettingsPanel extends BasePanelUI {
             <small>Adjust how pronounced the terrain features appear on the map</small>
           </div>
         </div>
+
+        <div class="settings-section controls-settings">
+          <h4>⌨️ Controls</h4>
+          <div class="mode-toggle" style="margin-bottom: 15px;">
+            <button class="mode-btn" id="preset-wasd">WASD Preset</button>
+            <button class="mode-btn" id="preset-arrows">Arrows Preset</button>
+          </div>
+          <div class="key-bindings-list">
+            ${Object.entries(PlayerStore.getKeyBindings()).map(([action, key]) => `
+              <div class="key-binding-item">
+                <span class="key-binding-label">${action}</span>
+                <div class="key-cap" data-action="${action}">${this.formatKeyName(key)}</div>
+              </div>
+            `).join('')}
+          </div>
+          <div id="controls-error" style="color: #ff5555; font-size: 12px; text-align: center; margin-top: 8px; height: 18px; font-weight: bold; transition: opacity 0.3s;"></div>
+          <small id="preset-instruction" style="display: block; margin-top: 10px; color: #ffcb6b; text-align: center;">
+            ${Object.values(PlayerStore.getKeyBindings()).includes('arrowup')
+        ? '🎮 Arrow Keys used for movement. Use WASD for camera!'
+        : '🎮 WASD used for movement. Use Arrow Keys for camera!'}
+          </small>
+          <small style="display: block; margin-top: 4px; color: rgba(255,255,255,0.5); text-align: center;">Click a key to rebind it individually</small>
+        </div>
       </div>
     `;
 
@@ -190,15 +213,15 @@ export class SettingsPanel extends BasePanelUI {
     // Model Change button (NEW)
     const modelChangeBtn = content.querySelector('.change-model');
     modelChangeBtn?.addEventListener('click', () => {
-        window.showModelSelector();
-        trackQuestEvent('MODEL_SELECTOR_OPEN');
+      window.showModelSelector();
+      trackQuestEvent('MODEL_SELECTOR_OPEN');
     });
 
     // Minecraft Walking button (NEW)
     const minecraftWalkingBtn = content.querySelector('.minecraft-walking');
     minecraftWalkingBtn?.addEventListener('click', () => {
-        console.log('Switching to Bob the Builder! Can we fix it? YES WE CAN!');
-        window.dispatchEvent(new CustomEvent('player:switch_to_minecraft_walking'));
+      console.log('Switching to Bob the Builder! Can we fix it? YES WE CAN!');
+      window.dispatchEvent(new CustomEvent('player:switch_to_minecraft_walking'));
     });
 
     // Movement Mode toggle (NEW)
@@ -377,21 +400,136 @@ export class SettingsPanel extends BasePanelUI {
         // Update state
         PlayerStore.setIsLowPerformanceDevice(isEnabled);
         PlayerStore._saveStateToLocalStorage();
-        
+
         // Update terrain section visibility
         if (terrainSection) {
           terrainSection.classList.toggle('hidden', isEnabled);
         }
-        
+
         // Reload the page to apply changes (like map style)
         setTimeout(() => {
           window.location.reload();
         }, 400);
       });
     });
+
+    // Preset listeners
+    const wasdBtn = content.querySelector('#preset-wasd');
+    const arrowsBtn = content.querySelector('#preset-arrows');
+
+    const updateUIFromBindings = () => {
+      const bindings = PlayerStore.getKeyBindings();
+      content.querySelectorAll('.key-cap').forEach(cap => {
+        const action = (cap as HTMLElement).dataset.action;
+        if (action) {
+          const key = bindings[action];
+          cap.textContent = this.formatKeyName(key);
+        }
+      });
+
+      // Update help text
+      const instruction = content.querySelector('#preset-instruction');
+      if (instruction) {
+        instruction.textContent = Object.values(bindings).some(k => k.startsWith('arrow'))
+          ? '🎮 Arrow Keys used for movement. Use WASD for camera!'
+          : '🎮 WASD used for movement. Use Arrow Keys for camera!';
+      }
+    };
+
+    wasdBtn?.addEventListener('click', () => {
+      const wasd = { forward: 'w', backward: 's', left: 'a', right: 'd', run: 'shift', jump: ' ', cruise: 'c' };
+      for (const [action, key] of Object.entries(wasd)) {
+        PlayerStore.setKeyBinding(action, key);
+      }
+      updateUIFromBindings();
+    });
+
+    arrowsBtn?.addEventListener('click', () => {
+      const arrows = { forward: 'arrowup', backward: 'arrowdown', left: 'arrowleft', right: 'arrowright', run: 'shift', jump: ' ', cruise: 'c' };
+      for (const [action, key] of Object.entries(arrows)) {
+        PlayerStore.setKeyBinding(action, key);
+      }
+      updateUIFromBindings();
+    });
+
+    // Key rebinding listeners
+    const keyCaps = content.querySelectorAll('.key-cap');
+    keyCaps.forEach(cap => {
+      cap.addEventListener('click', (e) => {
+        const target = e.currentTarget as HTMLElement;
+        const action = target.dataset.action;
+        if (!action) return;
+
+        // Visual feedback
+        target.classList.add('recording');
+        target.textContent = '...';
+
+        const handleRebind = (event: KeyboardEvent) => {
+          // Prevent default browser behavior (like scrolling with space)
+          event.preventDefault();
+          event.stopPropagation();
+
+          if (event.key === 'Escape') {
+            target.textContent = this.formatKeyName(PlayerStore.getKeyBindings()[action]);
+            target.classList.remove('recording');
+            return;
+          }
+
+          const newKey = event.key.toLowerCase();
+
+          if (newKey === 'unidentified') {
+            this.showControlsError(content, "Key not recognized. Try another.");
+            target.textContent = this.formatKeyName(PlayerStore.getKeyBindings()[action]);
+            target.classList.remove('recording');
+            return;
+          }
+
+          const currentBindings = PlayerStore.getKeyBindings();
+
+          // Conflict Detection: If this key is already used by another action
+          const existingAction = Object.entries(currentBindings).find(([act, k]) => k === newKey && act !== action);
+
+          if (existingAction) {
+            this.showControlsError(content, `Key "${this.formatKeyName(newKey)}" is already bound to ${existingAction[0]}!`);
+            // Reset the pulsing cap back to its original value
+            target.textContent = this.formatKeyName(PlayerStore.getKeyBindings()[action]);
+            target.classList.remove('recording');
+            return;
+          }
+
+          PlayerStore.setKeyBinding(action, newKey);
+          updateUIFromBindings();
+          target.classList.remove('recording');
+        };
+
+        window.addEventListener('keydown', handleRebind, { once: true, capture: true });
+      });
+    });
   }
 
   destroy(): void {
     this.container.innerHTML = '';
+  }
+
+  private formatKeyName(key: string): string {
+    if (!key) return '(Unbound)';
+    if (key === ' ') return 'Space';
+    if (key === 'arrowup') return 'Up Arrow';
+    if (key === 'arrowdown') return 'Down Arrow';
+    if (key === 'arrowleft') return 'Left Arrow';
+    if (key === 'arrowright') return 'Right Arrow';
+    if (key.length === 1) return key.toUpperCase();
+    return key.charAt(0).toUpperCase() + key.slice(1);
+  }
+
+  private showControlsError(content: HTMLElement, message: string): void {
+    const errorArea = content.querySelector('#controls-error');
+    if (errorArea) {
+      errorArea.textContent = message;
+      (errorArea as HTMLElement).style.opacity = '1';
+      setTimeout(() => {
+        (errorArea as HTMLElement).style.opacity = '0';
+      }, 3000);
+    }
   }
 } 
